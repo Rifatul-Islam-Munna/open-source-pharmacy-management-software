@@ -1,0 +1,1 @@
+export const GLOBALDATABSE = 'Pharma-1';

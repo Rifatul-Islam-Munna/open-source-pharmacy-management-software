@@ -1,0 +1,45 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
+
+
+export type MedicineDocument = HydratedDocument<Medicine>;
+ export enum DosageType {
+   Tablet = 'Tablet',
+   Syrup = 'Syrup',
+   Capsule = 'Capsule',
+   Injection = 'Injection',
+ }
+@Schema({timestamps:true})
+
+export class Medicine {
+ @Prop()
+ name:string;
+ 
+ @Prop({type: String, enum: DosageType})
+ dosageType:DosageType;
+
+ @Prop()
+ generic:string;
+ 
+ @Prop()
+ strength:string;
+
+ @Prop()
+ manufacturer:string;
+ @Prop()
+ UnitPrice:string;
+
+ @Prop()
+ PackageSize:string;
+
+ @Prop({unique:true})
+ slug:string;
+
+
+
+
+
+}
+
+export const MedicineSchema = SchemaFactory.createForClass(Medicine);
+

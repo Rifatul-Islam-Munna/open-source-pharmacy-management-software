@@ -1,13 +1,24 @@
 "use client";
 
 import { useState, ViewTransition } from "react";
-import { CalendarIcon, Sparkles, Upload, X } from "lucide-react";
+import {
+  BottleWine,
+  CalendarIcon,
+  MilkOff,
+  Pill,
+  Sparkles,
+  Syringe,
+  Tablets,
+  Upload,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { useDebounce } from "use-debounce";
 import {
   Popover,
   PopoverContent,
@@ -25,6 +36,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMedicineStore } from "@/stores/medicine-store";
 import { cn } from "@/lib/utils";
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { DogeType, Medicine } from "@/@types/global-medicin";
+import { Badge } from "@/components/ui/badge";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 
 // Sample medicine list for combobox
 const medicineOptions = [
@@ -47,6 +64,15 @@ export default function AddMedicinePage() {
   const [openCombobox, setOpenCombobox] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [seach, setSeach] = useState("");
+  const [debouncedSearch] = useDebounce(seach, 1000);
+  const query = new URLSearchParams();
+  if (debouncedSearch?.length > 3) query.append("name", debouncedSearch);
+
+  const { data, isPending } = useQueryWrapper<Medicine[]>(
+    ["medicines", debouncedSearch],
+    `/medicine?${query.toString()}`
+  );
 
   const handleImageUpload = (file: File) => {
     setImageFile(file);
@@ -72,16 +98,27 @@ export default function AddMedicinePage() {
     }
   };
 
+  const { mutate, isPending: isSaving } = useCommonMutationApi({
+    url: "/shop/create-new-medicine",
+    method: "POST",
+    mutationKey: ["create-new-medicine"],
+    onSuccess: (data) => {
+      console.log("Success:", data);
+      clearCurrentMedicine();
+      setImageFile(null);
+      setImagePreview(null);
+    },
+  });
+
   const handleSave = () => {
     if (!currentMedicine?.name || !currentMedicine?.batchName) {
-      alert("Please fill in required fields");
+      toast.success("Please fill in required fields");
       return;
     }
 
     const medicine = {
-      id: Date.now().toString(),
       name: currentMedicine.name,
-      batchName: currentMedicine.batchName,
+      batchNumber: currentMedicine.batchName,
       expiryDate: currentMedicine.expiryDate,
       purchasePrice: currentMedicine.purchasePrice || 0,
       sellingPrice: currentMedicine.sellingPrice || 0,
@@ -92,16 +129,70 @@ export default function AddMedicinePage() {
         unitsPerStrip: 0,
       },
       totalUnits: currentMedicine.totalUnits || 0,
-      imageUrl: imagePreview || undefined,
+      ...(currentMedicine?.shopMedicineId && {
+        shopMedicineId: currentMedicine?.shopMedicineId,
+      }),
     };
+    console.log("Saving medicine:", medicine);
 
-    addMedicine(medicine);
-    clearCurrentMedicine();
-    setImageFile(null);
-    setImagePreview(null);
+    mutate(medicine);
   };
 
   const totalUnits = currentMedicine?.totalUnits || 0;
+
+  const getDogeIcon = (value: string) => {
+    if (value === DogeType.Tablet) {
+      return (
+        <Badge
+          className=" text-white bg-primary-blue hover:bg-dark-blue"
+          variant={"default"}
+        >
+          <Tablets className=" w-5 h-5 text-white" />{" "}
+        </Badge>
+      );
+    }
+    if (value === DogeType.Capsule) {
+      return (
+        <Badge
+          className=" text-white  bg-primary-blue hover:bg-dark-blue"
+          variant={"default"}
+        >
+          {" "}
+          <Pill className=" w-5 h-5 text-white" />
+        </Badge>
+      );
+    }
+    if (value === DogeType.Syrup) {
+      return (
+        <Badge
+          className=" text-white  bg-primary-blue hover:bg-dark-blue"
+          variant={"default"}
+        >
+          {" "}
+          <BottleWine className=" w-5 h-5 text-white" />{" "}
+        </Badge>
+      );
+    }
+    if (value === DogeType.Injection) {
+      return (
+        <Badge
+          className=" text-white  bg-primary-blue hover:bg-dark-blue"
+          variant={"default"}
+        >
+          <Syringe className=" w-5 h-5 text-white" />
+        </Badge>
+      );
+    }
+    return (
+      <Badge
+        className=" text-white  bg-primary-blue hover:bg-dark-blue"
+        variant={"default"}
+      >
+        {" "}
+        <MilkOff className=" w-5 h-5 text-white" />{" "}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -162,23 +253,38 @@ export default function AddMedicinePage() {
                         <CommandInput
                           placeholder="Search medicine..."
                           className="h-9"
+                          value={seach}
+                          onValueChange={setSeach}
                         />
                         <CommandList>
                           <CommandEmpty>No medicine found.</CommandEmpty>
                           <CommandGroup>
-                            {medicineOptions.map((medicine) => (
+                            {data?.map((medicine) => (
                               <CommandItem
-                                key={medicine.value}
-                                value={medicine.value}
+                                key={medicine._id}
+                                value={medicine.name}
                                 onSelect={() => {
                                   updateCurrentMedicine({
-                                    name: medicine.label,
+                                    name: medicine.name,
+                                    shopMedicineId: medicine._id,
                                   });
                                   setOpenCombobox(false);
                                 }}
                                 className="hover:bg-light-gray text-sm"
                               >
-                                {medicine.label}
+                                {isPending && "Loading..."}
+                                <span className=" text-dark-blue font-semibold">
+                                  {medicine.name}
+                                </span>{" "}
+                                -{" "}
+                                <span className=" text-primary-blue font-normal">
+                                  {" "}
+                                  {medicine?.strength}
+                                </span>
+                                -{getDogeIcon(medicine.dosageType)}-
+                                <span className=" text-xs">
+                                  {medicine.generic}
+                                </span>
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -442,8 +548,9 @@ export default function AddMedicinePage() {
             <Button
               onClick={handleSave}
               className="h-9 bg-primary-blue hover:bg-dark-blue text-white shadow-none text-sm"
+              disabled={isSaving}
             >
-              Save Medicine
+              {isSaving ? <Spinner /> : "Save Medicine"}
             </Button>
           </div>
         </TabsContent>

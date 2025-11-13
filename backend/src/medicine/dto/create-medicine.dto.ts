@@ -47,4 +47,10 @@ export class CreateMedicineDto {
   slug: string;
 }
 
+export class getAllMedicineDto{
+  @ApiPropertyOptional({ example: 'Napa' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
 

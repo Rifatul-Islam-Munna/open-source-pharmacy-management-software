@@ -15,7 +15,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="w-full bg-light-gray min-h-screen">
+      <main className="w-full bg-light-gray min-h-screen @container">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border-gray bg-white px-4">
           <SidebarTrigger className="text-dark-blue hover:bg-light-gray hover:text-primary-blue" />
           <Separator orientation="vertical" className="h-6 bg-border-gray" />
@@ -31,7 +31,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-dark-blue font-medium">
+                <BreadcrumbPage className="text-dark-blue font-medium ">
                   Current Page
                 </BreadcrumbPage>
               </BreadcrumbItem>
@@ -39,7 +39,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Breadcrumb>
         </header>
 
-        <div className="p-6">{children}</div>
+        <div className=" w-full">{children}</div>
       </main>
     </SidebarProvider>
   );

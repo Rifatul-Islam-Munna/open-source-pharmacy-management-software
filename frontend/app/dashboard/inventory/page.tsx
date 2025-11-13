@@ -12,6 +12,8 @@ import {
   Trash2,
   TrendingUp,
   Check,
+  Eye,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useDebounce } from "use-debounce";
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { MedicineResponse } from "@/@types/inventory";
+import { format, isValid, parseISO } from "date-fns";
+import { MedicineDetailsModal } from "@/components/custom/inventory/medicine-details-modal";
+import { EditMedicineModal } from "@/components/custom/inventory/edit-medicine-modal";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 
 // Demo data with proper date format
 const demoMedicines = [
@@ -129,15 +138,47 @@ export default function InventoryPage() {
   // Filter states
   const [selectedStockStatus, setSelectedStockStatus] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("name-asc");
+  const [text] = useDebounce(searchQuery, 1000);
+  const query = new URLSearchParams();
+  if (text.length > 3) query.append("searchQuery", text);
+  query.append("page", currentPage.toString());
+  query.append("limit", itemsPerPage.toString());
+  if (selectedStockStatus?.length > 0)
+    selectedStockStatus?.forEach((item) => query.append("stockStatus", item));
+  query.append("sortBy", sortBy);
+  console.log("urls", `/shop?${query.toString()}`);
 
+  const { data, isPending, refetch } = useQueryWrapper<MedicineResponse>(
+    [
+      "get-my-inventory",
+      text,
+      currentPage,
+      itemsPerPage,
+      selectedStockStatus,
+      sortBy,
+    ],
+    `/shop?${query.toString()}`
+  );
+  const { mutate, isPending: IsDeteleting } = useCommonMutationApi({
+    method: "DELETE",
+    url: "/shop/delete-shop-medicine",
+    successMessage: "Medicine deleted successfully",
+    onSuccess: () => {
+      refetch();
+    },
+  });
   // Format date
-  const formatDate = (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    };
-    return date.toLocaleDateString("en-US", options);
+  const formatDate = (dateString: string): string | null => {
+    // Parse the date string to a Date object
+    const date = parseISO(dateString);
+
+    // Check if the date is valid
+    if (!isValid(date)) {
+      return "N/A"; // or throw an error if you prefer
+    }
+
+    // Format the date
+    return format(date, "MMMM dd, yyyy"); // Example: December 10, 2028
   };
 
   // Filter and sort medicines
@@ -171,7 +212,7 @@ export default function InventoryPage() {
     }
   });
 
-  const totalPages = Math.ceil(filteredMedicines.length / itemsPerPage);
+  const totalPages = data?.meta?.totalPages ?? 1;
 
   // Paginate
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -189,28 +230,30 @@ export default function InventoryPage() {
     setSelectedMedicine(null);
   };
 
-  const getStockBadge = (status: string) => {
-    switch (status) {
-      case "in-stock":
-        return (
-          <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/20">
-            In Stock
-          </Badge>
-        );
-      case "low-stock":
-        return (
-          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">
-            Low Stock
-          </Badge>
-        );
-      case "out-of-stock":
-        return (
-          <Badge className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20">
-            Out of Stock
-          </Badge>
-        );
-      default:
-        return null;
+  const getStockBadge = (totalUnits: number) => {
+    if (totalUnits > 5) {
+      // In stock
+      return (
+        <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/20">
+          In Stock
+        </Badge>
+      );
+    } else if (totalUnits > 0 && totalUnits <= 5) {
+      // Low stock
+      return (
+        <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/20">
+          Low Stock
+        </Badge>
+      );
+    } else if (totalUnits <= 0) {
+      // Out of stock
+      return (
+        <Badge className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20">
+          Out of Stock
+        </Badge>
+      );
+    } else {
+      return "N/A";
     }
   };
 
@@ -223,39 +266,39 @@ export default function InventoryPage() {
   };
 
   // Generate page numbers
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
+  const getPaginationRange = (currentPage: number, totalPages: number) => {
+    const delta = 2; // Show 3 pages before and after current page
+    const range: (number | string)[] = [];
+    const rangeWithDots: (number | string)[] = [];
+    let l: number | undefined;
 
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push("...");
-        pages.push(currentPage - 1);
-        pages.push(currentPage);
-        pages.push(currentPage + 1);
-        pages.push("...");
-        pages.push(totalPages);
+    // Always include first page, current page range, and last page
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 || // First page
+        i === totalPages || // Last page
+        (i >= currentPage - delta && i <= currentPage + delta) // Pages around current
+      ) {
+        range.push(i);
       }
     }
 
-    return pages;
+    // Add ellipsis where needed
+    for (const i of range) {
+      if (l) {
+        if (i - l === 2) {
+          // Only one page gap, show the number
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          // Multiple pages gap, show ellipsis
+          rangeWithDots.push("...");
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
   };
 
   return (
@@ -384,6 +427,14 @@ export default function InventoryPage() {
                       { value: "name-desc", label: "Name (Z-A)" },
                       { value: "price-asc", label: "Price (Low to High)" },
                       { value: "price-desc", label: "Price (High to Low)" },
+                      {
+                        value: "quantity-asc",
+                        label: "Quantity (High to Low)",
+                      },
+                      {
+                        value: "quantity-desc",
+                        label: "Quantity (Low to High)",
+                      },
                       { value: "expiry-asc", label: "Expiry (Earliest)" },
                       { value: "expiry-desc", label: "Expiry (Latest)" },
                     ].map((option) => (
@@ -429,7 +480,7 @@ export default function InventoryPage() {
 
       {/* Table */}
       <div className="px-4">
-        <div className="border border-border-gray rounded-lg overflow-hidden bg-white">
+        <div className="border overflow-x-auto border-border-gray rounded-lg overflow-hidden bg-white">
           <Table>
             <TableHeader>
               <TableRow className="bg-light-gray hover:bg-light-gray">
@@ -443,7 +494,13 @@ export default function InventoryPage() {
                   STOCK STATUS
                 </TableHead>
                 <TableHead className="font-semibold text-dark-text">
+                  PURCHASE PRICE
+                </TableHead>
+                <TableHead className="font-semibold text-dark-text">
                   UNIT PRICE
+                </TableHead>
+                <TableHead className="font-semibold text-dark-text">
+                  IN STOCK
                 </TableHead>
                 <TableHead className="font-semibold text-dark-text text-right">
                   ACTIONS
@@ -451,21 +508,27 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedMedicines.length > 0 ? (
-                paginatedMedicines.map((medicine) => (
+              {(data?.data?.length ?? 0) > 0 ? (
+                data?.data?.map((medicine) => (
                   <TableRow
-                    key={medicine.id}
+                    key={medicine?._id}
                     className="hover:bg-light-gray transition-colors"
                   >
                     <TableCell className="font-medium text-dark-blue">
-                      {medicine.name}
+                      {medicine?.name}
                     </TableCell>
                     <TableCell className="text-dark-text">
-                      {formatDate(medicine.expiryDate)}
+                      {formatDate(medicine?.expiryDate)}
                     </TableCell>
-                    <TableCell>{getStockBadge(medicine.stockStatus)}</TableCell>
+                    <TableCell>{getStockBadge(medicine?.totalUnits)}</TableCell>
                     <TableCell className="text-dark-text">
-                      ${medicine.unitPrice.toFixed(2)}
+                      ${medicine?.purchasePrice?.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-dark-text">
+                      ${medicine?.sellingPrice?.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-dark-text">
+                      {medicine?.totalUnits}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -477,23 +540,47 @@ export default function InventoryPage() {
                             <MoreHorizontal className="h-4 w-4 text-dark-text" />
                           </Button>
                         </DropdownMenuTrigger>
+
                         <DropdownMenuContent
                           align="end"
                           className="w-48 shadow-none border-border-gray"
                         >
                           <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/inventory/edit/${medicine.id}`)
-                            }
+                            onSelect={(e) => e.preventDefault()}
                             className="cursor-pointer hover:bg-light-gray"
                           >
-                            <Edit className="h-4 w-4 mr-2 text-primary-blue" />
-                            <span className="text-dark-text">Edit</span>
+                            <EditMedicineModal
+                              medicine={medicine}
+                              trigger={
+                                <div className="flex items-center w-full">
+                                  <Edit className="h-4 w-4 mr-2 text-primary-blue" />
+                                  <span className="text-dark-text">
+                                    Edit Medicine
+                                  </span>
+                                </div>
+                              }
+                            />
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/inventory/sales/${medicine.id}`)
-                            }
+                            onSelect={(e) => {
+                              e.preventDefault(); // Prevent dropdown from closing
+                            }}
+                            className="cursor-pointer hover:bg-light-gray"
+                          >
+                            <MedicineDetailsModal
+                              trigger={
+                                <div className="flex items-center w-full">
+                                  <Eye className="h-4 w-4 mr-2 text-primary-blue" />
+                                  <span className="text-dark-text">
+                                    View Details
+                                  </span>
+                                </div>
+                              }
+                              medicine={medicine}
+                            />
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled
                             className="cursor-pointer hover:bg-light-gray"
                           >
                             <TrendingUp className="h-4 w-4 mr-2 text-success" />
@@ -501,10 +588,15 @@ export default function InventoryPage() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-border-gray" />
                           <DropdownMenuItem
-                            onClick={() => handleDelete(medicine.id)}
+                            onClick={() => mutate(medicine?._id)}
                             className="cursor-pointer hover:bg-red-50 text-red-600"
+                            disabled={IsDeteleting}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
+                            {IsDeteleting ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-2" />
+                            )}
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -563,7 +655,7 @@ export default function InventoryPage() {
             </Button>
 
             <div className="flex items-center gap-1">
-              {getPageNumbers().map((page, index) =>
+              {getPaginationRange(currentPage, totalPages)?.map((page, index) =>
                 page === "..." ? (
                   <span
                     key={`ellipsis-${index}`}
@@ -576,7 +668,7 @@ export default function InventoryPage() {
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
                     onClick={() => setCurrentPage(page as number)}
-                    className={`h-9 w-9 p-0 shadow-none rounded-full ${
+                    className={`h-9 w-9 p-0 shadow-none rounded-full  ${
                       currentPage === page
                         ? "bg-primary-blue text-white hover:bg-dark-blue"
                         : "border-border-gray hover:bg-light-gray text-dark-text"
@@ -602,8 +694,8 @@ export default function InventoryPage() {
         </div>
         <p className="text-center text-sm text-dark-text mt-3">
           Showing {startIndex + 1} to{" "}
-          {Math.min(endIndex, filteredMedicines.length)} of{" "}
-          {filteredMedicines.length} entries
+          {Math.min(endIndex, data?.data?.length ?? 0)} of {data?.meta?.total}{" "}
+          entries
         </p>
       </div>
 

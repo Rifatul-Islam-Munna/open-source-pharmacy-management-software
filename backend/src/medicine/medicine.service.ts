@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateMedicineDto } from './dto/create-medicine.dto';
+import { CreateMedicineDto, getAllMedicineDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 import { TenantConnectionService } from 'src/tenant-connection/tenant-connection.service';
 import { InjectModel } from '@nestjs/mongoose';
@@ -22,6 +22,8 @@ export class MedicineService {
       slug:slug
     }
     const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+
+
     const create = await getMedicineModel.create(finalData);
 
     
@@ -29,8 +31,22 @@ export class MedicineService {
     return create;
   }
 
-  findAll() {
-    return `This action returns all medicine`;
+  async findAll(query:getAllMedicineDto) {
+    const {name} = query
+    const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+     if (!name) {
+      const getAllMedicin = await getMedicineModel.find().sort({name:1}).lean().limit(20);
+      return getAllMedicin
+    
+  }
+    
+      const getAllMedicin = await getMedicineModel
+  .find({ $text: { $search: name } })
+  .select({ score: { $meta: "textScore" } })
+  .sort({ score: { $meta: "textScore" } })
+  .limit(20)
+  .lean();
+      return getAllMedicin
   }
 
   findOne(id: number) {

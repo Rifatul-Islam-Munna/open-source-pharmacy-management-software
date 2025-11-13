@@ -8,7 +8,7 @@ export interface MedicineQuantity {
 }
 
 export interface Medicine {
-  id: string;
+  shopMedicineId?: string;
   name: string;
   batchName: string;
   expiryDate: Date | undefined;

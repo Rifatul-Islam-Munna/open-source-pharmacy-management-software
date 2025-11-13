@@ -9,10 +9,10 @@ export type MedicineDocument = HydratedDocument<Medicine>;
    Capsule = 'Capsule',
    Injection = 'Injection',
  }
-@Schema({timestamps:true})
+@Schema({timestamps:true,autoIndex:true})
 
 export class Medicine {
- @Prop()
+ @Prop({text:true,index:true,required:true})
  name:string;
  
  @Prop({type: String, enum: DosageType})
@@ -32,7 +32,7 @@ export class Medicine {
  @Prop()
  PackageSize:string;
 
- @Prop({unique:true})
+ @Prop({unique:true,index:true})
  slug:string;
 
 
@@ -42,4 +42,5 @@ export class Medicine {
 }
 
 export const MedicineSchema = SchemaFactory.createForClass(Medicine);
+
 

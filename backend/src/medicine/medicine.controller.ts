@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { MedicineService } from './medicine.service';
-import { CreateMedicineDto } from './dto/create-medicine.dto';
+import { CreateMedicineDto, getAllMedicineDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 
 @Controller('medicine')
@@ -13,8 +13,8 @@ export class MedicineController {
   }
 
   @Get()
-  findAll() {
-    return this.medicineService.findAll();
+  findAll(@Query() query:getAllMedicineDto) {
+    return this.medicineService.findAll(query);
   }
 
   @Get(':id')

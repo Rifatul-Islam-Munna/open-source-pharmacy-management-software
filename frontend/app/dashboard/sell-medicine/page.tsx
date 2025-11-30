@@ -36,6 +36,7 @@ import { useSalesStore } from "@/stores/sales-store";
 import { useDebounce } from "use-debounce";
 import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
 import { Medicine, MedicineResponse } from "@/@types/inventory";
+import ReceiptDialog from "@/components/custom/Receipt/ReceiptDialog";
 
 export default function SellMedicinePage() {
   const {
@@ -54,6 +55,7 @@ export default function SellMedicinePage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [discountInput, setDiscountInput] = useState("");
+  const [open, setOpen] = useState(false);
 
   const [debouncedSearch] = useDebounce(searchQuery, 1000);
   const query = new URLSearchParams();
@@ -92,16 +94,18 @@ export default function SellMedicinePage() {
       alert("Please add at least one medicine");
       return;
     }
+    setOpen(true);
 
     // Here you would save to backend
-    console.log("Saving sale:", currentSale);
+    /*     console.log("Saving sale:", currentSale);
     alert("Sale saved successfully!");
     clearSale();
-    setDiscountInput("");
+    setDiscountInput(""); */
   };
 
   return (
     <div className="space-y-3">
+      <ReceiptDialog open={open} onOpenChange={setOpen} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border-gray bg-white">
         <h1 className="text-2xl font-bold text-dark-blue">Sell Medicine</h1>

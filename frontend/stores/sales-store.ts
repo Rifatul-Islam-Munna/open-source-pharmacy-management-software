@@ -4,9 +4,13 @@ export interface SaleItem {
   id: string;
   medicineId: string;
   medicineName: string;
-  price: number;
+  price: number;          // original price in BDT
+  discountPrice?: number; // per-item discount price (optional) in BDT
+  itemDiscountType?: "percentage" | "fixed"; // for UI display
+  itemDiscountValue?: number; // for UI display
   quantity: number;
-  subtotal: number;
+  subtotal: number;       // effective unit price * quantity in BDT
+  stock: number;          // max available quantity for this item
 }
 
 export interface Sale {
@@ -15,6 +19,8 @@ export interface Sale {
   discountType: "percentage" | "fixed";
   discountValue: number;
   discountAmount: number;
+  itemsDiscount: number;
+  totalDiscount: number;
   total: number;
   paymentStatus: "paid" | "due";
   paidAmount: number;
@@ -25,11 +31,17 @@ export interface Sale {
 
 interface SalesState {
   currentSale: Sale;
-  
-  // Actions
-  addItem: (medicine: { id: string; name: string; price: number }) => void;
+
+  addItem: (medicine: {
+    id: string;
+    name: string;
+    price: number;
+    discountPrice?: number;
+    stock: number;
+  }) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
+  setItemDiscount: (itemId: string, type: "percentage" | "fixed", value: number) => void; // NEW
   setDiscount: (type: "percentage" | "fixed", value: number) => void;
   setPaymentStatus: (status: "paid" | "due") => void;
   setPaidAmount: (amount: number) => void;
@@ -46,6 +58,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     discountType: "percentage",
     discountValue: 0,
     discountAmount: 0,
+    itemsDiscount: 0,
+    totalDiscount: 0,
     total: 0,
     paymentStatus: "paid",
     paidAmount: 0,
@@ -61,15 +75,29 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     );
 
     if (existingItem) {
-      get().updateQuantity(existingItem.id, existingItem.quantity + 1);
+      const nextQty = Math.min(existingItem.quantity + 1, existingItem.stock);
+      get().updateQuantity(existingItem.id, nextQty);
     } else {
+      if (medicine.stock <= 0) {
+        return;
+      }
+
+      const unitPrice =
+        medicine.discountPrice && medicine.discountPrice > 0
+          ? medicine.discountPrice
+          : medicine.price;
+
       const newItem: SaleItem = {
         id: Date.now().toString(),
         medicineId: medicine.id,
         medicineName: medicine.name,
         price: medicine.price,
+        discountPrice: medicine.discountPrice,
+        itemDiscountType: undefined,
+        itemDiscountValue: 0,
         quantity: 1,
-        subtotal: medicine.price,
+        subtotal: unitPrice,
+        stock: medicine.stock,
       };
 
       set((state) => ({
@@ -82,8 +110,47 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }
   },
 
+  // NEW METHOD: Set discount for individual item
+  setItemDiscount: (itemId, type, value) => {
+    set((state) => ({
+      currentSale: {
+        ...state.currentSale,
+        items: state.currentSale.items.map((item) => {
+          if (item.id !== itemId) return item;
+
+          let discountPrice = item.price;
+          if (value > 0) {
+            if (type === "percentage") {
+              discountPrice = item.price - (item.price * value) / 100;
+            } else {
+              discountPrice = item.price - value;
+            }
+            discountPrice = Math.max(0, discountPrice);
+          }
+
+          const effectiveUnitPrice = value > 0 ? discountPrice : item.price;
+
+          return {
+            ...item,
+            itemDiscountType: type,
+            itemDiscountValue: value,
+            discountPrice: value > 0 ? discountPrice : undefined,
+            subtotal: effectiveUnitPrice * item.quantity,
+          };
+        }),
+      },
+    }));
+    get().calculateTotals();
+  },
+
   updateQuantity: (itemId, quantity) => {
-    if (quantity <= 0) {
+    const { currentSale } = get();
+    const item = currentSale.items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    const clamped = Math.max(0, Math.min(quantity, item.stock));
+
+    if (clamped <= 0) {
       get().removeItem(itemId);
       return;
     }
@@ -91,11 +158,20 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     set((state) => ({
       currentSale: {
         ...state.currentSale,
-        items: state.currentSale.items.map((item) =>
-          item.id === itemId
-            ? { ...item, quantity, subtotal: item.price * quantity }
-            : item
-        ),
+        items: state.currentSale.items.map((it) => {
+          if (it.id !== itemId) return it;
+
+          const effectiveUnitPrice =
+            it.discountPrice && it.discountPrice > 0
+              ? it.discountPrice
+              : it.price;
+
+          return {
+            ...it,
+            quantity: clamped,
+            subtotal: effectiveUnitPrice * clamped,
+          };
+        }),
       },
     }));
     get().calculateTotals();
@@ -162,10 +238,20 @@ export const useSalesStore = create<SalesState>((set, get) => ({
 
   calculateTotals: () => {
     const state = get();
+
     const subtotal = state.currentSale.items.reduce(
       (sum, item) => sum + item.subtotal,
       0
     );
+
+    const itemsDiscount = state.currentSale.items.reduce((sum, item) => {
+      const effectiveUnitPrice =
+        item.discountPrice && item.discountPrice > 0
+          ? item.discountPrice
+          : item.price;
+      const perUnitDiscount = item.price - effectiveUnitPrice;
+      return sum + perUnitDiscount * item.quantity;
+    }, 0);
 
     let discountAmount = 0;
     if (state.currentSale.discountType === "percentage") {
@@ -175,14 +261,20 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }
 
     const total = Math.max(0, subtotal - discountAmount);
+    const totalDiscount = itemsDiscount + discountAmount;
 
     set((state) => ({
       currentSale: {
         ...state.currentSale,
         subtotal,
         discountAmount,
+        itemsDiscount,
+        totalDiscount,
         total,
-        paidAmount: state.currentSale.paymentStatus === "paid" ? total : state.currentSale.paidAmount,
+        paidAmount:
+          state.currentSale.paymentStatus === "paid"
+            ? total
+            : state.currentSale.paidAmount,
       },
     }));
   },
@@ -195,6 +287,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         discountType: "percentage",
         discountValue: 0,
         discountAmount: 0,
+        itemsDiscount: 0,
+        totalDiscount: 0,
         total: 0,
         paymentStatus: "paid",
         paidAmount: 0,

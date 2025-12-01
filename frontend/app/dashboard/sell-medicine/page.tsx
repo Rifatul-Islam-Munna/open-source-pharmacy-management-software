@@ -12,6 +12,7 @@ import {
   Percent,
   Save,
   Banknote,
+  CreditCard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { useSalesStore } from "@/stores/sales-store";
+import { Sale, useSalesStore } from "@/stores/sales-store";
 import { useDebounce } from "use-debounce";
 import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
 import { Medicine, MedicineResponse } from "@/@types/inventory";
 import ReceiptDialog from "@/components/custom/Receipt/ReceiptDialog";
-
+import { nanoid } from "nanoid";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
+import { Spinner } from "@/components/ui/spinner";
 export default function SellMedicinePage() {
   const {
     currentSale,
@@ -50,12 +53,15 @@ export default function SellMedicinePage() {
     setCustomerInfo,
     setIssuedBy,
     clearSale,
+    setPaymentType,
+    setTransactionId,
   } = useSalesStore();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [discountInput, setDiscountInput] = useState("");
   const [open, setOpen] = useState(false);
+  const [sales, SetSales] = useState<Sale | null>(null);
 
   const [debouncedSearch] = useDebounce(searchQuery, 1000);
   const query = new URLSearchParams();
@@ -65,7 +71,18 @@ export default function SellMedicinePage() {
     ["sells-medicines", debouncedSearch],
     `/shop?${query.toString()}`
   );
+  const { mutate, isPending: isSaving } = useCommonMutationApi({
+    url: "/sells/create-new-sales",
+    method: "POST",
+    successMessage: "Sale created successfully",
+    mutationKey: ["create-new-salles"],
+    onSuccess: (data) => {
+      console.log("Success:", data);
 
+      clearSale();
+      setOpen(true);
+    },
+  });
   // Set default issued by on mount
   useEffect(() => {
     setIssuedBy("Admin User"); // You can get this from auth context
@@ -77,6 +94,10 @@ export default function SellMedicinePage() {
       name: medicine.name,
       price: medicine.sellingPrice,
       stock: medicine.totalUnits,
+      doesType: medicine?.shopMedicineId?.dosageType || "",
+      batchId: medicine?.batchNumber || "",
+      expiryDate: medicine.expiryDate,
+      originalPrice: medicine?.purchasePrice || 0,
     };
     addItem(payload);
     setSearchOpen(false);
@@ -86,15 +107,31 @@ export default function SellMedicinePage() {
   const handleDiscountChange = (value: string) => {
     setDiscountInput(value);
     const numValue = parseFloat(value) || 0;
-    setDiscount(currentSale.discountType, numValue);
+    setDiscount(currentSale?.discountType, numValue);
   };
 
+  const generateInvoice = () => {
+    const d = new Date();
+    const y = String(d.getFullYear()).slice(-2);
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+
+    const id = nanoid(10); // 10 chars is perfect
+
+    return `${y}${m}${day}-${id}`;
+  };
   const handleSaveSale = () => {
     if (currentSale.items.length === 0) {
       alert("Please add at least one medicine");
       return;
     }
-    setOpen(true);
+    const payload = {
+      ...currentSale,
+      invoiceId: generateInvoice(),
+    };
+    SetSales(payload);
+    mutate(payload);
+    console.log("Saving sale:", generateInvoice());
 
     // Here you would save to backend
     /*     console.log("Saving sale:", currentSale);
@@ -105,7 +142,7 @@ export default function SellMedicinePage() {
 
   return (
     <div className="space-y-3">
-      <ReceiptDialog open={open} onOpenChange={setOpen} />
+      <ReceiptDialog open={open} onOpenChange={setOpen} sale={sales} />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border-gray bg-white">
         <h1 className="text-2xl font-bold text-dark-blue">Sell Medicine</h1>
@@ -154,7 +191,7 @@ export default function SellMedicinePage() {
                           <CommandItem
                             key={medicine._id}
                             onSelect={() => handleAddMedicine(medicine)}
-                            className="cursor-pointer hover:bg-light-gray"
+                            className="cursor-pointer hover:bg-light-gray   min-w-xs"
                           >
                             <div className="flex items-center justify-between w-full">
                               <div>
@@ -163,6 +200,18 @@ export default function SellMedicinePage() {
                                 </p>
                                 <p className="text-xs text-dark-text/60">
                                   Stock: {medicine.totalUnits}
+                                </p>
+                                <p className="text-xs text-dark-text/60">
+                                  Batch:{" "}
+                                  <span className=" text-green-700 font-bold text-xs">
+                                    {medicine?.batchNumber}
+                                  </span>
+                                </p>
+                                <p className="text-xs text-dark-text/60">
+                                  Does Type:{" "}
+                                  <span className=" text-green-700 font-bold text-sm">
+                                    {medicine?.shopMedicineId?.dosageType}
+                                  </span>
                                 </p>
                               </div>
                               <Badge className="bg-primary-blue/10 text-primary-blue border-primary-blue/20">
@@ -216,7 +265,7 @@ export default function SellMedicinePage() {
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-dark-blue truncate">
-                            {item.medicineName}
+                            {item.medicineName} -{item?.doesType}
                           </p>
                           <p className="text-xs text-dark-text/60">
                             ৳{item.price.toFixed(2)} × {item.quantity} = ৳
@@ -416,6 +465,7 @@ export default function SellMedicinePage() {
           </Card>
 
           {/* Compact Discount & Payment - Combined */}
+
           <Card className="border-border-gray shadow-none">
             <CardContent className="p-3 space-y-2.5">
               {/* Discount Row */}
@@ -459,7 +509,7 @@ export default function SellMedicinePage() {
                           : "hover:bg-white text-dark-text"
                       }`}
                     >
-                      ৳
+                      <Banknote className="h-3 w-3" />
                     </Button>
                   </div>
                   <Input
@@ -472,10 +522,69 @@ export default function SellMedicinePage() {
                 </div>
               </div>
 
+              {/* Payment Type Row */}
+              <div>
+                <Label className="text-xs text-dark-text mb-1.5 block">
+                  Payment Type
+                </Label>
+                <div className="flex gap-1 bg-light-gray p-0.5 rounded border border-border-gray">
+                  <Button
+                    variant={
+                      currentSale.paymentType === "cash" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    onClick={() => setPaymentType("cash")}
+                    className={`h-7 flex-1 text-xs ${
+                      currentSale.paymentType === "cash"
+                        ? "bg-primary-blue text-white hover:bg-primary-blue"
+                        : "hover:bg-white text-dark-text"
+                    }`}
+                  >
+                    <Banknote className="h-3 w-3 mr-1" />
+                    Cash
+                  </Button>
+                  <Button
+                    variant={
+                      currentSale.paymentType === "online" ? "default" : "ghost"
+                    }
+                    size="sm"
+                    onClick={() => setPaymentType("online")}
+                    className={`h-7 flex-1 text-xs ${
+                      currentSale.paymentType === "online"
+                        ? "bg-primary-blue text-white hover:bg-primary-blue"
+                        : "hover:bg-white text-dark-text"
+                    }`}
+                  >
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Online
+                  </Button>
+                </div>
+              </div>
+
+              {/* Transaction ID - Only show when Online is selected */}
+              {currentSale.paymentType === "online" && (
+                <div>
+                  <Label
+                    htmlFor="transaction-id"
+                    className="text-xs text-dark-text mb-1.5 block"
+                  >
+                    Transaction ID
+                  </Label>
+                  <Input
+                    id="transaction-id"
+                    type="text"
+                    placeholder="Enter transaction ID"
+                    value={currentSale.transactionId || ""}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    className="h-7 border-border-gray focus:border-primary-blue shadow-none text-sm"
+                  />
+                </div>
+              )}
+
               {/* Payment Status Row */}
               <div>
                 <Label className="text-xs text-dark-text mb-1.5 block">
-                  Payment
+                  Payment Status
                 </Label>
                 <div className="flex gap-1 bg-light-gray p-0.5 rounded border border-border-gray">
                   <Button
@@ -603,10 +712,14 @@ export default function SellMedicinePage() {
 
               <Button
                 onClick={handleSaveSale}
-                disabled={currentSale.items.length === 0}
+                disabled={currentSale.items.length === 0 || isSaving}
                 className="w-full h-9 bg-success hover:bg-success/90 text-white shadow-none text-sm"
               >
-                <Save className="h-3.5 w-3.5 mr-2" />
+                {isSaving ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-2" />
+                )}
                 Complete Sale
               </Button>
             </CardContent>

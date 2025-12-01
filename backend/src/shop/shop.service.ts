@@ -6,6 +6,7 @@ import { ShopStockBatch, ShopStockBatchSchema } from './entities/shop.schema';
 import { Medicine, MedicineSchema } from 'src/medicine/entities/medicine.schema';
 import { Model, Types } from 'mongoose';
 
+
 @Injectable()
 export class ShopService {
   private logger = new Logger(ShopService.name)
@@ -45,6 +46,7 @@ export class ShopService {
     ShopStockBatch.name,
     ShopStockBatchSchema
   );
+  await shopStockBatchModel.syncIndexes()
   
   const medicineModel = this.tenantConnectionService.getModel(
     "pharmicy-1",
@@ -57,7 +59,7 @@ export class ShopService {
 
   // Name and SKU search (assuming name is on batch for search)
   if (searchQuery) {
-    filter.name = { $regex: searchQuery, $options: 'i' };
+    filter.$text = { $search: query.searchQuery };
     // If searching in joined medicine name, do via $lookup or aggregation (see note below)
   }
   // Stock status (if a field exists on your data—adjust as needed)
@@ -65,7 +67,7 @@ export class ShopService {
   if (stockStatus.includes(StockStatus.IN_STOCK)) {
     filter.totalUnits = { $gt: 0 };
   } else if (stockStatus.includes(StockStatus.LOW_STOCK)) {
-    filter.totalUnits = { $gt: 0, $lt: 5 };
+    filter.totalUnits = { $gt: 0, $lt: 10 };
   } else if (stockStatus.includes(StockStatus.OUT_OF_STOCK)) {
     filter.totalUnits = { $lt: 1 };
   }

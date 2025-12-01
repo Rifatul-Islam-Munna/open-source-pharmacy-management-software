@@ -6,12 +6,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import  compression from 'compression';
+import { AllExceptionsFilter } from 'lib/all-exceptions.filter';
 
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(compression());
   app.use(helmet());
+  app.enableCors({origin: true, credentials: true,optionsSuccessStatus: 200});
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -20,6 +22,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+  app.useGlobalFilters(new AllExceptionsFilter())
  
 
   // Only setup Swagger if not in watch mode

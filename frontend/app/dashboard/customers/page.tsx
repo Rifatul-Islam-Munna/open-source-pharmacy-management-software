@@ -45,82 +45,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-
-// Demo data
-const demoCustomers = [
-  {
-    id: "1",
-    name: "John Anderson",
-    phone: "+880 1712-345678",
-    medicines: ["Paracetamol 500mg", "Amoxicillin 250mg", "Ibuprofen 200mg"],
-    totalDue: 450.5,
-    purchaseDate: new Date("2024-12-15"),
-    status: "pending",
-  },
-  {
-    id: "2",
-    name: "Sarah Williams",
-    phone: "+880 1823-456789",
-    medicines: ["Cetirizine 10mg", "Omeprazole 20mg"],
-    totalDue: 0,
-    purchaseDate: new Date("2024-12-10"),
-    status: "completed",
-  },
-  {
-    id: "3",
-    name: "Michael Brown",
-    phone: "+880 1934-567890",
-    medicines: ["Aspirin 81mg"],
-    totalDue: 125.0,
-    purchaseDate: new Date("2024-12-18"),
-    status: "pending",
-  },
-  {
-    id: "4",
-    name: "Emily Johnson",
-    phone: "+880 1645-678901",
-    medicines: ["Metformin 500mg", "Atorvastatin 10mg", "Lisinopril 5mg"],
-    totalDue: 0,
-    purchaseDate: new Date("2024-12-05"),
-    status: "completed",
-  },
-  {
-    id: "5",
-    name: "David Martinez",
-    phone: "+880 1756-789012",
-    medicines: ["Loratadine 10mg", "Dextromethorphan 15mg"],
-    totalDue: 280.75,
-    purchaseDate: new Date("2024-12-20"),
-    status: "pending",
-  },
-  {
-    id: "6",
-    name: "Lisa Thompson",
-    phone: "+880 1867-890123",
-    medicines: ["Azithromycin 500mg"],
-    totalDue: 0,
-    purchaseDate: new Date("2024-12-08"),
-    status: "completed",
-  },
-  {
-    id: "7",
-    name: "Robert Garcia",
-    phone: "+880 1978-901234",
-    medicines: ["Prednisone 5mg", "Montelukast 10mg"],
-    totalDue: 350.25,
-    purchaseDate: new Date("2024-12-22"),
-    status: "pending",
-  },
-  {
-    id: "8",
-    name: "Jennifer Lee",
-    phone: "+880 1589-012345",
-    medicines: ["Levothyroxine 50mcg", "Metoprolol 25mg"],
-    totalDue: 0,
-    purchaseDate: new Date("2024-12-12"),
-    status: "completed",
-  },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { useDebounce } from "use-debounce";
+import { SalesResponse, Sale } from "@/@types/sells";
+import { SalesModal } from "@/components/custom/sales/SalesModal";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -129,13 +60,38 @@ export default function CustomersPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("date-desc");
+  const [text] = useDebounce(searchQuery, 1000);
 
-  // Format date
-  const formatDate = (date: Date) => {
+  const query = new URLSearchParams();
+  query.set("currentPage", currentPage.toString());
+  query.set("itemsPerPage", itemsPerPage.toString());
+  query.set("sortBy", sortBy);
+  if (selectedStatus?.length > 0)
+    selectedStatus?.forEach((item) => query.append("status", item));
+  if (text.length > 3) query.append("searchQuery", text);
+
+  const { data, isPending, refetch } = useQueryWrapper<SalesResponse>(
+    ["customer-sales", currentPage, itemsPerPage, selectedStatus, sortBy, text],
+    `/sells/get-all-customer?${query.toString()}`
+  );
+  const { mutate, isPending: isMarkPending } = useCommonMutationApi({
+    method: "PATCH",
+    url: "/sells/mark-as-completed",
+    successMessage: "Marked as completed successfully",
+    onSuccess(data) {
+      refetch();
+    },
+  });
+  const handelAsPaid = (id: string) => {
+    mutate({ id });
+  };
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
       day: "numeric",
       month: "long",
@@ -144,53 +100,14 @@ export default function CustomersPage() {
     return date.toLocaleDateString("en-US", options);
   };
 
-  // Filter and sort customers
-  let filteredCustomers = demoCustomers.filter((customer) => {
-    const matchesSearch =
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery);
-    const matchesStatus =
-      selectedStatus.length === 0 || selectedStatus.includes(customer.status);
-    return matchesSearch && matchesStatus;
-  });
-
-  // Sort customers
-  filteredCustomers.sort((a, b) => {
-    switch (sortBy) {
-      case "name-asc":
-        return a.name.localeCompare(b.name);
-      case "name-desc":
-        return b.name.localeCompare(a.name);
-      case "due-asc":
-        return a.totalDue - b.totalDue;
-      case "due-desc":
-        return b.totalDue - a.totalDue;
-      case "date-asc":
-        return a.purchaseDate.getTime() - b.purchaseDate.getTime();
-      case "date-desc":
-        return b.purchaseDate.getTime() - a.purchaseDate.getTime();
-      default:
-        return 0;
-    }
-  });
-
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
-
-  // Paginate
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
-
-  const toggleStatus = (status: string) => {
-    setSelectedStatus((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status]
-    );
-  };
+  const formatCurrency = (amount: number) =>
+    `${amount.toLocaleString("en-BD", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} BDT`;
 
   const getStatusBadge = (status: string) => {
-    if (status === "completed") {
+    if (status === "paid") {
       return (
         <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/20 text-xs">
           Completed
@@ -204,8 +121,17 @@ export default function CustomersPage() {
     );
   };
 
+  const toggleStatus = (status: string) => {
+    setSelectedStatus((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
+  };
+
   // Generate page numbers
   const getPageNumbers = () => {
+    const totalPages = data?.pagination.totalPages ?? 1;
     const pages = [];
     const maxVisible = 5;
 
@@ -240,6 +166,33 @@ export default function CustomersPage() {
     return pages;
   };
 
+  // Skeleton loading rows
+  const SkeletonRow = () => (
+    <TableRow>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-40" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-48" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-6 w-24" />
+      </TableCell>
+      <TableCell className="text-right">
+        <Skeleton className="h-8 w-8 mx-auto" />
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -249,7 +202,14 @@ export default function CustomersPage() {
           Manage customer credits and track payment dues.
         </p>
       </div>
-
+      <SalesModal
+        sale={selectedSale}
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedSale(null);
+        }}
+      />
       {/* Search and Actions */}
       <div className="px-4">
         <div className="flex items-center gap-3">
@@ -290,8 +250,8 @@ export default function CustomersPage() {
                   </h4>
                   <div className="space-y-2">
                     {[
-                      { value: "pending", label: "Pending" },
-                      { value: "completed", label: "Completed" },
+                      { value: "due", label: "Pending" },
+                      { value: "paid", label: "Completed" },
                     ].map((status) => (
                       <div
                         key={status.value}
@@ -428,108 +388,124 @@ export default function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedCustomers.length > 0 ? (
-                paginatedCustomers.map((customer) => (
-                  <TableRow
-                    key={customer.id}
-                    className="hover:bg-light-gray transition-colors"
-                  >
-                    <TableCell className="font-medium text-dark-blue">
-                      {customer.name}
-                    </TableCell>
-                    <TableCell className="text-dark-text text-sm">
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-dark-text/50" />
-                        {customer.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-dark-text text-sm max-w-xs">
-                      <div className="flex items-center gap-1">
-                        {customer.medicines.slice(0, 2).map((med, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-block bg-light-gray px-2 py-0.5 rounded text-xs"
-                          >
-                            {med}
-                          </span>
-                        ))}
-                        {customer.medicines.length > 2 && (
-                          <span className="text-xs text-dark-text/60">
-                            +{customer.medicines.length - 2} more
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-dark-text font-semibold">
-                      {customer.totalDue > 0 ? (
-                        <span className="text-yellow-600">
-                          ${customer.totalDue.toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="text-success">$0.00</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-dark-text text-sm">
-                      {formatDate(customer.purchaseDate)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(customer.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:bg-light-gray"
-                          >
-                            <MoreHorizontal className="h-4 w-4 text-dark-text" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-48 shadow-none border-border-gray"
-                        >
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/customers/view/${customer.id}`)
-                            }
-                            className="cursor-pointer hover:bg-light-gray"
-                          >
-                            <Eye className="h-4 w-4 mr-2 text-primary-blue" />
-                            <span className="text-dark-text">View Details</span>
-                          </DropdownMenuItem>
-                          {customer.status === "pending" && (
-                            <>
-                              <DropdownMenuSeparator className="bg-border-gray" />
+              {isPending
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <SkeletonRow key={i} />
+                  ))
+                : data?.sales && data.sales.length > 0
+                ? data.sales.map((sale: Sale) => {
+                    const totalDue = Math.max(
+                      sale.total - (sale.paidAmount || 0),
+                      0
+                    );
+                    return (
+                      <TableRow
+                        key={sale._id}
+                        className="hover:bg-light-gray transition-colors"
+                      >
+                        <TableCell className="font-medium text-dark-blue">
+                          {sale.customerName || "Walk-in customer"}
+                        </TableCell>
+                        <TableCell className="text-dark-text text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="h-3.5 w-3.5 text-dark-text/50" />
+                            {sale.customerPhone || "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-dark-text text-sm max-w-xs">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {sale.items.slice(0, 2).map((item, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-block bg-light-gray px-2 py-0.5 rounded text-xs"
+                              >
+                                {item.medicineName}
+                              </span>
+                            ))}
+                            {sale.items.length > 2 && (
+                              <span className="text-xs text-dark-text/60">
+                                +{sale.items.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-dark-text font-semibold">
+                          {totalDue > 0 ? (
+                            <span className="text-yellow-600">
+                              {formatCurrency(totalDue)}
+                            </span>
+                          ) : (
+                            <span className="text-success">0.00 BDT</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-dark-text text-sm">
+                          {formatDate(sale.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(sale.paymentStatus)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-light-gray"
+                              >
+                                <MoreHorizontal className="h-4 w-4 text-dark-text" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-48 shadow-none border-border-gray"
+                            >
                               <DropdownMenuItem
-                                onClick={() => {
-                                  console.log(
-                                    "Mark as completed:",
-                                    customer.id
-                                  );
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSale(sale);
+                                  setModalOpen(true);
                                 }}
                                 className="cursor-pointer hover:bg-light-gray"
                               >
-                                <CheckCircle className="h-4 w-4 mr-2 text-success" />
+                                <Eye className="h-4 w-4 mr-2 text-primary-blue" />
                                 <span className="text-dark-text">
-                                  Mark as Completed
+                                  View Details
                                 </span>
                               </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-32 text-center text-dark-text"
-                  >
-                    No customers found.
-                  </TableCell>
-                </TableRow>
-              )}
+                              {sale.paymentStatus === "due" && (
+                                <>
+                                  <DropdownMenuSeparator className="bg-border-gray" />
+                                  <DropdownMenuItem
+                                    onClick={() => handelAsPaid(sale._id)}
+                                    className="cursor-pointer hover:bg-light-gray"
+                                    disabled={isMarkPending}
+                                  >
+                                    {isMarkPending ? (
+                                      <Spinner />
+                                    ) : (
+                                      <CheckCircle className="h-4 w-4 mr-2 text-success" />
+                                    )}
+                                    <span className="text-dark-text">
+                                      Mark as Paid
+                                    </span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                : !isPending && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="h-32 text-center text-dark-text"
+                      >
+                        No customers found.
+                      </TableCell>
+                    </TableRow>
+                  )}
             </TableBody>
           </Table>
         </div>
@@ -564,7 +540,7 @@ export default function CustomersPage() {
             <Button
               variant="outline"
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || isPending}
               className="h-9 border-border-gray hover:bg-light-gray shadow-none disabled:opacity-50"
             >
               Previous
@@ -584,11 +560,12 @@ export default function CustomersPage() {
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
                     onClick={() => setCurrentPage(page as number)}
+                    disabled={isPending}
                     className={`h-9 w-9 p-0 shadow-none rounded-full ${
                       currentPage === page
                         ? "bg-primary-blue text-white hover:bg-dark-blue"
                         : "border-border-gray hover:bg-light-gray text-dark-text"
-                    }`}
+                    } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {page}
                   </Button>
@@ -599,20 +576,29 @@ export default function CustomersPage() {
             <Button
               variant="outline"
               onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                setCurrentPage((prev) =>
+                  Math.min(prev + 1, data?.pagination.totalPages ?? 1)
+                )
               }
-              disabled={currentPage === totalPages}
+              disabled={
+                currentPage === (data?.pagination.totalPages ?? 1) || isPending
+              }
               className="h-9 border-border-gray hover:bg-light-gray shadow-none disabled:opacity-50"
             >
               Next
             </Button>
           </div>
         </div>
-        <p className="text-center text-sm text-dark-text mt-3">
-          Showing {startIndex + 1} to{" "}
-          {Math.min(endIndex, filteredCustomers.length)} of{" "}
-          {filteredCustomers.length} entries
-        </p>
+        {!isPending && data && (
+          <p className="text-center text-sm text-dark-text mt-3">
+            Showing {((currentPage - 1) * itemsPerPage + 1).toLocaleString()} to{" "}
+            {Math.min(
+              currentPage * itemsPerPage,
+              data.pagination.totalCount
+            ).toLocaleString()}{" "}
+            of {data.pagination.totalCount.toLocaleString()} entries
+          </p>
+        )}
       </div>
     </div>
   );

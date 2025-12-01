@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  MoreHorizontal,
-  Search,
-  Filter,
-  ArrowUpDown,
-  Eye,
-  Calendar,
-} from "lucide-react";
+import { MoreHorizontal, Search, Filter, ArrowUpDown, Eye } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,95 +36,11 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-
-// Demo sales data
-const demoSales = [
-  {
-    id: "INV-001",
-    customerName: "John Anderson",
-    customerPhone: "+880 1712-345678",
-    medicines: ["Paracetamol 500mg", "Amoxicillin 250mg", "Ibuprofen 200mg"],
-    totalPrice: 450.5,
-    status: "paid",
-    date: new Date("2024-12-20"),
-    issuedBy: "Admin User",
-  },
-  {
-    id: "INV-002",
-    customerName: null,
-    customerPhone: null,
-    medicines: ["Cetirizine 10mg", "Omeprazole 20mg"],
-    totalPrice: 85.25,
-    status: "paid",
-    date: new Date("2024-12-20"),
-    issuedBy: "Cashier 1",
-  },
-  {
-    id: "INV-003",
-    customerName: "Sarah Williams",
-    customerPhone: "+880 1823-456789",
-    medicines: ["Aspirin 81mg"],
-    totalPrice: 125.0,
-    status: "due",
-    date: new Date("2024-12-19"),
-    issuedBy: "Admin User",
-  },
-  {
-    id: "INV-004",
-    customerName: "Michael Brown",
-    customerPhone: "+880 1934-567890",
-    medicines: [
-      "Metformin 500mg",
-      "Atorvastatin 10mg",
-      "Lisinopril 5mg",
-      "Aspirin 75mg",
-    ],
-    totalPrice: 380.0,
-    status: "paid",
-    date: new Date("2024-12-19"),
-    issuedBy: "Cashier 2",
-  },
-  {
-    id: "INV-005",
-    customerName: null,
-    customerPhone: null,
-    medicines: ["Loratadine 10mg", "Dextromethorphan 15mg"],
-    totalPrice: 56.5,
-    status: "paid",
-    date: new Date("2024-12-18"),
-    issuedBy: "Admin User",
-  },
-  {
-    id: "INV-006",
-    customerName: "Emily Johnson",
-    customerPhone: "+880 1645-678901",
-    medicines: ["Azithromycin 500mg"],
-    totalPrice: 280.75,
-    status: "due",
-    date: new Date("2024-12-18"),
-    issuedBy: "Cashier 1",
-  },
-  {
-    id: "INV-007",
-    customerName: "David Martinez",
-    customerPhone: "+880 1756-789012",
-    medicines: ["Prednisone 5mg", "Montelukast 10mg"],
-    totalPrice: 195.0,
-    status: "paid",
-    date: new Date("2024-12-17"),
-    issuedBy: "Admin User",
-  },
-  {
-    id: "INV-008",
-    customerName: null,
-    customerPhone: null,
-    medicines: ["Levothyroxine 50mcg", "Metoprolol 25mg", "Gabapentin 300mg"],
-    totalPrice: 412.3,
-    status: "paid",
-    date: new Date("2024-12-17"),
-    issuedBy: "Cashier 2",
-  },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { Sale, SalesResponse } from "@/@types/sells";
+import { useDebounce } from "use-debounce";
+import { SalesModal } from "@/components/custom/sales/SalesModal";
 
 export default function SalesPage() {
   const router = useRouter();
@@ -140,13 +49,28 @@ export default function SalesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("date-desc");
+  const [text] = useDebounce(searchQuery, 1000);
 
-  // Format date
-  const formatDate = (date: Date) => {
+  const query = new URLSearchParams();
+  query.set("currentPage", currentPage.toString());
+  query.set("itemsPerPage", itemsPerPage.toString());
+  query.set("sortBy", sortBy);
+  if (selectedStatus?.length > 0)
+    selectedStatus?.forEach((item) => query.append("status", item));
+  if (text.length > 3) query.append("searchQuery", text);
+
+  const { data, isPending } = useQueryWrapper<SalesResponse>(
+    ["get-sales", currentPage, itemsPerPage, selectedStatus, sortBy, text],
+    `/sells/get-my-sales?${query.toString()}`
+  );
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
       day: "numeric",
       month: "long",
@@ -154,44 +78,6 @@ export default function SalesPage() {
     };
     return date.toLocaleDateString("en-US", options);
   };
-
-  // Filter and sort sales
-  let filteredSales = demoSales.filter((sale) => {
-    const matchesSearch =
-      sale.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sale.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sale.customerPhone?.includes(searchQuery);
-    const matchesStatus =
-      selectedStatus.length === 0 || selectedStatus.includes(sale.status);
-    return matchesSearch && matchesStatus;
-  });
-
-  // Sort sales
-  filteredSales.sort((a, b) => {
-    switch (sortBy) {
-      case "date-asc":
-        return a.date.getTime() - b.date.getTime();
-      case "date-desc":
-        return b.date.getTime() - a.date.getTime();
-      case "price-asc":
-        return a.totalPrice - b.totalPrice;
-      case "price-desc":
-        return b.totalPrice - a.totalPrice;
-      case "invoice-asc":
-        return a.id.localeCompare(b.id);
-      case "invoice-desc":
-        return b.id.localeCompare(a.id);
-      default:
-        return 0;
-    }
-  });
-
-  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
-
-  // Paginate
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedSales = filteredSales.slice(startIndex, endIndex);
 
   const toggleStatus = (status: string) => {
     setSelectedStatus((prev) =>
@@ -218,6 +104,7 @@ export default function SalesPage() {
 
   // Generate page numbers
   const getPageNumbers = () => {
+    const totalPages = data?.pagination?.totalPages || 1;
     const pages = [];
     const maxVisible = 5;
 
@@ -252,6 +139,51 @@ export default function SalesPage() {
     return pages;
   };
 
+  // Skeleton Row Component
+  const SkeletonRow = () => (
+    <TableRow className="hover:bg-light-gray">
+      <TableCell>
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-28" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Skeleton className="h-6 w-24 rounded" />
+          <Skeleton className="h-6 w-24 rounded" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-12 rounded" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end">
+          <Skeleton className="h-8 w-8 rounded" />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+
+  const sales = data?.sales || [];
+  const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages || 1;
+  const startIndex = pagination
+    ? (pagination.currentPage - 1) * pagination.itemsPerPage
+    : 0;
+  const endIndex = pagination
+    ? Math.min(startIndex + pagination.itemsPerPage, pagination.totalCount)
+    : 0;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -261,6 +193,14 @@ export default function SalesPage() {
           View all sales transactions and invoices
         </p>
       </div>
+      <SalesModal
+        sale={selectedSale}
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedSale(null);
+        }}
+      />
 
       {/* Search and Actions */}
       <div className="px-4">
@@ -443,14 +383,19 @@ export default function SalesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedSales.length > 0 ? (
-                paginatedSales.map((sale) => (
+              {isPending ? (
+                // Show skeleton rows during loading
+                Array.from({ length: itemsPerPage }).map((_, index) => (
+                  <SkeletonRow key={index} />
+                ))
+              ) : sales.length > 0 ? (
+                sales.map((sale) => (
                   <TableRow
-                    key={sale.id}
+                    key={sale._id}
                     className="hover:bg-light-gray transition-colors"
                   >
                     <TableCell className="font-medium text-dark-blue">
-                      {sale.id}
+                      {sale.invoiceId}
                     </TableCell>
                     <TableCell className="text-dark-text text-sm">
                       {sale.customerName || (
@@ -466,27 +411,27 @@ export default function SalesPage() {
                     </TableCell>
                     <TableCell className="text-dark-text text-sm max-w-xs">
                       <div className="flex items-center gap-1">
-                        {sale.medicines.slice(0, 2).map((med, idx) => (
+                        {sale.items.slice(0, 2).map((item, idx) => (
                           <span
                             key={idx}
                             className="inline-block bg-light-gray px-2 py-0.5 rounded text-xs"
                           >
-                            {med}
+                            {item.medicineName}
                           </span>
                         ))}
-                        {sale.medicines.length > 2 && (
+                        {sale.items.length > 2 && (
                           <span className="text-xs text-dark-text/60">
-                            +{sale.medicines.length - 2} more
+                            +{sale.items.length - 2} more
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-dark-text font-semibold">
-                      ${sale.totalPrice.toFixed(2)}
+                      ${sale.total.toFixed(2)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                    <TableCell>{getStatusBadge(sale.paymentStatus)}</TableCell>
                     <TableCell className="text-dark-text text-sm">
-                      {formatDate(sale.date)}
+                      {formatDate(sale.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -503,9 +448,11 @@ export default function SalesPage() {
                           className="w-48 shadow-none border-border-gray"
                         >
                           <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/sales/view/${sale.id}`)
-                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSale(sale);
+                              setModalOpen(true);
+                            }}
                             className="cursor-pointer hover:bg-light-gray"
                           >
                             <Eye className="h-4 w-4 mr-2 text-primary-blue" />
@@ -560,7 +507,7 @@ export default function SalesPage() {
             <Button
               variant="outline"
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || isPending}
               className="h-9 border-border-gray hover:bg-light-gray shadow-none disabled:opacity-50"
             >
               Previous
@@ -580,6 +527,7 @@ export default function SalesPage() {
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
                     onClick={() => setCurrentPage(page as number)}
+                    disabled={isPending}
                     className={`h-9 w-9 p-0 shadow-none rounded-full ${
                       currentPage === page
                         ? "bg-primary-blue text-white hover:bg-dark-blue"
@@ -597,17 +545,19 @@ export default function SalesPage() {
               onClick={() =>
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || isPending}
               className="h-9 border-border-gray hover:bg-light-gray shadow-none disabled:opacity-50"
             >
               Next
             </Button>
           </div>
         </div>
-        <p className="text-center text-sm text-dark-text mt-3">
-          Showing {startIndex + 1} to {Math.min(endIndex, filteredSales.length)}{" "}
-          of {filteredSales.length} entries
-        </p>
+        {pagination && (
+          <p className="text-center text-sm text-dark-text mt-3">
+            Showing {startIndex + 1} to {endIndex} of {pagination.totalCount}{" "}
+            entries
+          </p>
+        )}
       </div>
     </div>
   );

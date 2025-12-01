@@ -7,13 +7,14 @@ import { toast } from "sonner";
 export function useQueryWrapper<T>(
   key: QueryKey,
   url: string,
-  options?: Omit<UseQueryOptions<T, Error, T>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<T, Error, T>, 'queryKey' | 'queryFn'>,
+  revalidate?: number
 ) {
 
 
   return useQuery<T, Error>({
     queryKey: key,
-    queryFn: ()=>GetRequestNormal<T>(url),
+    queryFn: ()=>GetRequestNormal<T>(url,revalidate),
   
     ...options,
   });

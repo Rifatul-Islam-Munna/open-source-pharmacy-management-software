@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { SellsService } from './sells.service';
-import { CreateSellDto } from './dto/create-sell.dto';
+import { CreateSellDto, CustomerSalesQueryDto, DashboardDateRangeDto, SalesQueryDto } from './dto/create-sell.dto';
 import { UpdateSellDto } from './dto/update-sell.dto';
+import { DeleteDto } from 'lib/pagination.dto';
 
 @Controller('sells')
 export class SellsController {
@@ -12,14 +13,28 @@ export class SellsController {
     return this.sellsService.create(createSellDto);
   }
 
-  @Get()
-  findAll() {
-    return this.sellsService.findAll();
+  @Get('get-my-sales')
+  findAll(@Query() query:SalesQueryDto) {
+    return this.sellsService.findAll(query);
+  }
+  @Get('get-all-customer')
+  findALlCustomer(@Query() query:CustomerSalesQueryDto) {
+    return this.sellsService.findAllForCustomerSales(query);
+  }
+  @Get('get-all-dashboardData')
+  getAllDashboardData(@Query() query:DashboardDateRangeDto) {
+    return this.sellsService.getDashboardData(query);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.sellsService.findOne(+id);
+  }
+
+    @Patch('mark-as-completed')
+    
+  markAsPaid(@Body() query:DeleteDto) {
+    return this.sellsService.markAsPaid(query?.id!);
   }
 
   @Patch(':id')

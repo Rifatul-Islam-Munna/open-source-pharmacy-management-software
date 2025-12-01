@@ -11,11 +11,15 @@ export interface SaleItem {
   quantity: number;
   subtotal: number;       // effective unit price * quantity in BDT
   stock: number;          // max available quantity for this item
+  doesType?:string
+  batchId?:string
+  expiryDate?:string
+  originalPrice?:number
 }
 
 export interface Sale {
   items: SaleItem[];
-  subtotal: number;
+  subtotal: number; // this subtotal is after the discount product
   discountType: "percentage" | "fixed";
   discountValue: number;
   discountAmount: number;
@@ -26,7 +30,10 @@ export interface Sale {
   paidAmount: number;
   customerName: string;
   customerPhone: string;
-  issuedBy: string;
+  issuedBy?: string;
+  transactionId?: string;
+  paymentType: string
+  invoiceId?:string
 }
 
 interface SalesState {
@@ -38,6 +45,10 @@ interface SalesState {
     price: number;
     discountPrice?: number;
     stock: number;
+    doesType?:string
+    batchId?:string
+    expiryDate?:string
+    originalPrice?:number
   }) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
@@ -45,8 +56,10 @@ interface SalesState {
   setDiscount: (type: "percentage" | "fixed", value: number) => void;
   setPaymentStatus: (status: "paid" | "due") => void;
   setPaidAmount: (amount: number) => void;
+  setTransactionId: (value: string) => void;
   setCustomerInfo: (name: string, phone: string) => void;
   setIssuedBy: (name: string) => void;
+  setPaymentType: (name: string) => void;
   calculateTotals: () => void;
   clearSale: () => void;
 }
@@ -54,7 +67,7 @@ interface SalesState {
 export const useSalesStore = create<SalesState>((set, get) => ({
   currentSale: {
     items: [],
-    subtotal: 0,
+    subtotal: 0, // this subtotal is after the discount product
     discountType: "percentage",
     discountValue: 0,
     discountAmount: 0,
@@ -66,6 +79,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     customerName: "",
     customerPhone: "",
     issuedBy: "",
+      transactionId: '',
+  paymentType: ''
   },
 
   addItem: (medicine) => {
@@ -98,6 +113,10 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         quantity: 1,
         subtotal: unitPrice,
         stock: medicine.stock,
+        doesType:medicine.doesType,
+        expiryDate:medicine?.expiryDate,
+        batchId:medicine?.batchId,
+        originalPrice:medicine.originalPrice
       };
 
       set((state) => ({
@@ -135,7 +154,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
             itemDiscountType: type,
             itemDiscountValue: value,
             discountPrice: value > 0 ? discountPrice : undefined,
-            subtotal: effectiveUnitPrice * item.quantity,
+            subtotal: effectiveUnitPrice ,
           };
         }),
       },
@@ -227,6 +246,23 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }));
   },
 
+  setTransactionId: (value) => {
+    set((state) => ({
+      currentSale: {
+        ...state.currentSale,
+        transactionId: value,
+      },
+    }));
+  },
+  setPaymentType: (value) => {
+    set((state) => ({
+      currentSale: {
+        ...state.currentSale,
+        paymentType: value,
+      },
+    }));
+  },
+
   setIssuedBy: (name) => {
     set((state) => ({
       currentSale: {
@@ -250,7 +286,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
           ? item.discountPrice
           : item.price;
       const perUnitDiscount = item.price - effectiveUnitPrice;
-      return sum + perUnitDiscount * item.quantity;
+      return sum + perUnitDiscount ;
     }, 0);
 
     let discountAmount = 0;
@@ -295,6 +331,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         customerName: "",
         customerPhone: "",
         issuedBy: "",
+        transactionId: "",
+        paymentType: ''
       },
     });
   },

@@ -28,100 +28,164 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  useApiMutation,
+  useQueryWrapper,
+} from "@/api-hooks/react-query-wrapper";
+import { DashboardResponse, Period } from "@/@types/dashboardData";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format, toZonedTime } from "date-fns-tz";
+import {
+  addWeeks,
+  format as formatDate,
+  differenceInDays,
+  startOfMonth,
+} from "date-fns";
+// Helper to format period for chart labels
+const formatPeriodLabel = (period: Period, range: string): string => {
+  const timeZone = "Asia/Dhaka";
+  if (typeof period === "number") {
+    if (range === "today") {
+      const utcDate = new Date();
+      utcDate.setUTCHours(period, 0, 0, 0);
+      const bdtDate = toZonedTime(utcDate, timeZone);
+      return format(bdtDate, "h a");
+    }
 
-// All periods demo data—expand as you need
-const dataMap = {
-  today: [
-    { time: "9 AM", revenue: 120, cost: 75, profit: 45 },
-    { time: "10 AM", revenue: 180, cost: 110, profit: 70 },
-    { time: "11 AM", revenue: 240, cost: 145, profit: 95 },
-    { time: "12 PM", revenue: 310, cost: 190, profit: 120 },
-    { time: "1 PM", revenue: 420, cost: 250, profit: 170 },
-    { time: "2 PM", revenue: 580, cost: 340, profit: 240 },
-    { time: "3 PM", revenue: 720, cost: 425, profit: 295 },
-    { time: "4 PM", revenue: 890, cost: 520, profit: 370 },
-  ],
-  week: [
-    { day: "Mon", revenue: 3200, cost: 1920, profit: 1280 },
-    { day: "Tue", revenue: 3800, cost: 2280, profit: 1520 },
-    { day: "Wed", revenue: 3400, cost: 2040, profit: 1360 },
-    { day: "Thu", revenue: 4500, cost: 2700, profit: 1800 },
-    { day: "Fri", revenue: 5200, cost: 3120, profit: 2080 },
-    { day: "Sat", revenue: 6100, cost: 3660, profit: 2440 },
-    { day: "Sun", revenue: 4200, cost: 2520, profit: 1680 },
-  ],
-  month: [
-    { week: "Week 1", revenue: 18400, cost: 11040, profit: 7360 },
-    { week: "Week 2", revenue: 21200, cost: 12720, profit: 8480 },
-    { week: "Week 3", revenue: 19800, cost: 11880, profit: 7920 },
-    { week: "Week 4", revenue: 22900, cost: 13740, profit: 9160 },
-  ],
-  year: [
-    { month: "Jan", revenue: 65400, cost: 39240, profit: 26160 },
-    { month: "Feb", revenue: 72300, cost: 43380, profit: 28920 },
-    { month: "Mar", revenue: 78700, cost: 47220, profit: 31480 },
-    { month: "Apr", revenue: 69200, cost: 41520, profit: 27680 },
-    { month: "May", revenue: 81500, cost: 48900, profit: 32600 },
-    { month: "Jun", revenue: 76800, cost: 46080, profit: 30720 },
-    { month: "Jul", revenue: 84400, cost: 50640, profit: 33760 },
-    { month: "Aug", revenue: 79900, cost: 47940, profit: 31960 },
-    { month: "Sep", revenue: 87100, cost: 52260, profit: 34840 },
-    { month: "Oct", revenue: 82300, cost: 49380, profit: 32920 },
-    { month: "Nov", revenue: 90600, cost: 54360, profit: 36240 },
-    { month: "Dec", revenue: 95400, cost: 57240, profit: 38160 },
-  ],
+    if (range === "week") {
+      // 1 → Monday, 2 → Tuesday, etc.
+      const days = [
+        "",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+      return days[period] || `Day ${period}`;
+    }
+
+    if (range === "month") {
+      const now = new Date();
+      const monthStart = startOfMonth(now); // First day of the month
+      const dayOfMonth = differenceInDays(now, monthStart) + 1; // Day number in month
+
+      // Calculate week in month (1-5)
+      const weekOfMonth = Math.ceil(dayOfMonth / 7);
+
+      const weekText =
+        weekOfMonth === 1
+          ? "First"
+          : weekOfMonth === 2
+          ? "Second"
+          : weekOfMonth === 3
+          ? "Third"
+          : "Last"; // 4th or 5th week
+
+      // Get month name
+      const monthName = now.toLocaleString("default", { month: "long" });
+
+      return `${weekText} week of ${monthName}`;
+    }
+
+    if (range === "year") {
+      // 1 → January, 2 → February, ..., 12 → December
+      const months = [
+        "",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      return months[period] || `Month ${period}`;
+    }
+  }
+
+  // Custom date object
+  return `${period.day}/${period.month}/${period.year}`;
 };
 
-const topProductsData = {
-  today: [
-    { name: "Paracetamol 500mg", units: 45, revenue: 324 },
-    { name: "Cetirizine 10mg", units: 38, revenue: 209 },
-    { name: "Aspirin 81mg", units: 32, revenue: 584 },
-    { name: "Metformin 500mg", units: 28, revenue: 119 },
-    { name: "Ibuprofen 200mg", units: 24, revenue: 288 },
-  ],
-  week: [
-    { name: "Paracetamol 500mg", units: 312, revenue: 2246 },
-    { name: "Amoxicillin 250mg", units: 267, revenue: 1736 },
-    { name: "Ibuprofen 200mg", units: 245, revenue: 2940 },
-    { name: "Cetirizine 10mg", units: 198, revenue: 1089 },
-    { name: "Omeprazole 20mg", units: 176, revenue: 1716 },
-  ],
-  month: [
-    { name: "Paracetamol 500mg", units: 1240, revenue: 8928 },
-    { name: "Amoxicillin 250mg", units: 980, revenue: 6370 },
-    { name: "Ibuprofen 200mg", units: 856, revenue: 10272 },
-    { name: "Cetirizine 10mg", units: 742, revenue: 4081 },
-    { name: "Omeprazole 20mg", units: 623, revenue: 6074 },
-  ],
-  year: [
-    { name: "Paracetamol 500mg", units: 15680, revenue: 112896 },
-    { name: "Amoxicillin 250mg", units: 12740, revenue: 82810 },
-    { name: "Ibuprofen 200mg", units: 10912, revenue: 130944 },
-    { name: "Cetirizine 10mg", units: 9646, revenue: 53053 },
-    { name: "Omeprazole 20mg", units: 8099, revenue: 78965 },
-  ],
+// Helper to get period type for range selection
+const getPeriodType = (period: Period): "today" | "week" | "month" | "year" => {
+  if (typeof period === "number") {
+    if (period <= 23) return "today"; // 0-23 hours
+    if (period <= 7) return "week"; // 1-7 days
+    if (period <= 52) return "month"; // 1-52 weeks
+    return "year"; // 1-12+ months
+  }
+  return "month"; // default for custom dates
+};
+
+// Format number to BDT currency
+const formatBDT = (value: number): string => {
+  return `৳ ${value.toFixed(2)}`;
+};
+
+// Helper to capitalize first letter
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+const TimeBaseValue = {
+  today: 7200,
+  week: 86400,
+  month: 259200,
+  year: 1296000,
 };
 
 export default function EnhancedDashboard() {
-  const [timeRange, setTimeRange] = useState<
+  const [selectedRange, setSelectedRange] = useState<
     "today" | "week" | "month" | "year"
   >("month");
-  const currentData = dataMap[timeRange];
-  const currentTopProducts = topProductsData[timeRange];
-  const totalRevenue = currentData.reduce((sum, d) => sum + d.revenue, 0);
-  const totalCost = currentData.reduce((sum, d) => sum + d.cost, 0);
-  const totalProfit = currentData.reduce((sum, d) => sum + d.profit, 0);
-  const profitMargin = ((totalProfit / (totalRevenue || 1)) * 100).toFixed(1);
-  const salesCount = { today: 87, week: 542, month: 2156, year: 8947 }[
-    timeRange
-  ];
-  const customerCount = { today: 64, week: 412, month: 1523, year: 6234 }[
-    timeRange
-  ];
-  const revenueGrowth = 12.5;
-  const profitGrowth = 15.8;
+  const numberOfTime = TimeBaseValue[selectedRange];
+
+  const { data: dashboardData, isPending } = useQueryWrapper<DashboardResponse>(
+    ["dashboard", selectedRange],
+    `/sells/get-all-dashboardData?range=${selectedRange}`,
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    },
+    numberOfTime
+  );
+
+  if (isPending) {
+    return <DashboardSkeleton />;
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="p-8 text-center text-dark-text">No data available</div>
+    );
+  }
+
+  const { summary, chartData, topProducts } = dashboardData;
+
+  // Transform chart data with proper labels
+  const currentData = chartData.map((item) => ({
+    ...item,
+    label: formatPeriodLabel(item.period, selectedRange),
+  }));
+
+  const totalRevenue = summary.totalRevenue;
+  const totalCost = summary.totalCost;
+  const totalProfit = summary.totalProfit;
+  const profitMargin = summary.profitMargin;
+  const salesCount = summary.totalSales;
+  const customerCount = summary.customerCount;
+  const totalDue = summary.totalDue;
+
   const isProfit = totalProfit > 0;
+  const revenueGrowth = 12.5; // Keep hardcoded or fetch from API if available
+  const profitGrowth = 15.8; // Keep hardcoded or fetch from API if available
 
   return (
     <div className="space-y-4">
@@ -138,9 +202,9 @@ export default function EnhancedDashboard() {
           {["today", "week", "month", "year"].map((period) => (
             <button
               key={period}
-              onClick={() => setTimeRange(period as any)}
+              onClick={() => setSelectedRange(period as any)}
               className={`px-4 py-1.5 text-xs rounded transition-colors ${
-                timeRange === period
+                selectedRange === period
                   ? "bg-primary-blue text-white"
                   : "text-dark-text hover:bg-white"
               }`}
@@ -155,7 +219,7 @@ export default function EnhancedDashboard() {
       <div className="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <DashboardStat
           title="Revenue"
-          value={`$${totalRevenue.toLocaleString()}`}
+          value={formatBDT(totalRevenue)}
           icon={<DollarSign className="h-6 w-6 text-primary-blue" />}
           label="Revenue Growth"
           changeLabel={`+${revenueGrowth}%`}
@@ -164,7 +228,7 @@ export default function EnhancedDashboard() {
         />
         <DashboardStat
           title="Total Cost"
-          value={`$${totalCost.toLocaleString()}`}
+          value={formatBDT(totalCost)}
           icon={<Package className="h-6 w-6 text-yellow-600" />}
           label="Cost / Revenue"
           changeLabel={`${((totalCost / (totalRevenue || 1)) * 100).toFixed(
@@ -175,7 +239,7 @@ export default function EnhancedDashboard() {
         />
         <DashboardStat
           title={isProfit ? "Net Profit" : "Net Loss"}
-          value={`$${Math.abs(totalProfit).toLocaleString()}`}
+          value={formatBDT(Math.abs(totalProfit))}
           icon={
             isProfit ? (
               <TrendingUp className="h-6 w-6 text-success" />
@@ -261,7 +325,7 @@ export default function EnhancedDashboard() {
         <Card className="border-border-gray shadow-none xl:col-span-2">
           <CardHeader className="pb-3 flex flex-col sm:flex-row sm:justify-between sm:items-center">
             <CardTitle className="text-base text-dark-blue">
-              Revenue vs Cost vs Profit - {capitalize(timeRange)}
+              Revenue vs Cost vs Profit - {capitalize(selectedRange)}
             </CardTitle>
             <Badge
               className={`${
@@ -278,15 +342,7 @@ export default function EnhancedDashboard() {
               <AreaChart data={currentData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
-                  dataKey={
-                    timeRange === "today"
-                      ? "time"
-                      : timeRange === "week"
-                      ? "day"
-                      : timeRange === "month"
-                      ? "week"
-                      : "month"
-                  }
+                  dataKey="label"
                   tick={{ fill: "#6B7280", fontSize: 12 }}
                 />
                 <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
@@ -345,15 +401,7 @@ export default function EnhancedDashboard() {
               <LineChart data={currentData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
-                  dataKey={
-                    timeRange === "today"
-                      ? "time"
-                      : timeRange === "week"
-                      ? "day"
-                      : timeRange === "month"
-                      ? "week"
-                      : "month"
-                  }
+                  dataKey="label"
                   tick={{ fill: "#6B7280", fontSize: 12 }}
                 />
                 <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
@@ -367,7 +415,7 @@ export default function EnhancedDashboard() {
                 <Line
                   type="monotone"
                   dataKey="profit"
-                  stroke="#10B981"
+                  stroke="#10B82F"
                   strokeWidth={3}
                   dot={{ fill: "#10B981", r: 5 }}
                 />
@@ -380,23 +428,23 @@ export default function EnhancedDashboard() {
         <Card className="border-border-gray shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-dark-blue">
-              Top Products - {capitalize(timeRange)}
+              Top Products - {capitalize(selectedRange)}
             </CardTitle>
             <p className="text-xs text-dark-text/60">Units sold and revenue</p>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
-                data={currentTopProducts}
+                data={topProducts}
                 layout="vertical"
-                margin={{ left: 100, right: 60 }}
+                margin={{ left: 100, right: 80 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   type="number"
                   tick={{ fill: "#6B7280", fontSize: 12 }}
                   label={{
-                    value: "Revenue ($)",
+                    value: "Revenue (BDT)",
                     position: "insideBottom",
                     offset: -5,
                   }}
@@ -425,7 +473,7 @@ export default function EnhancedDashboard() {
                             {payload[0].payload.units}
                           </p>
                           <p className="text-xs text-success font-semibold">
-                            Revenue: ${payload[0].payload.revenue}
+                            Revenue: {formatBDT(payload[0].payload.revenue)}
                           </p>
                         </div>
                       );
@@ -437,7 +485,7 @@ export default function EnhancedDashboard() {
                   <LabelList
                     dataKey="units"
                     position="right"
-                    formatter={(value) => `${value} units`}
+                    formatter={(value: number) => `${value} units`}
                     style={{ fill: "#374151", fontWeight: 600, fontSize: 12 }}
                   />
                 </Bar>
@@ -449,7 +497,7 @@ export default function EnhancedDashboard() {
                 <div className="text-center">Units Sold</div>
                 <div className="text-right">Revenue</div>
               </div>
-              {currentTopProducts.map((product, index) => (
+              {topProducts.map((product, index) => (
                 <div
                   key={index}
                   className="grid grid-cols-3 gap-1 text-xs py-1.5 px-1 hover:bg-light-gray rounded transition-colors"
@@ -463,7 +511,7 @@ export default function EnhancedDashboard() {
                     </Badge>
                   </div>
                   <div className="text-right font-semibold text-success">
-                    ${product.revenue}
+                    {formatBDT(product.revenue)}
                   </div>
                 </div>
               ))}
@@ -485,13 +533,13 @@ export default function EnhancedDashboard() {
             <div className="flex justify-between p-2 border border-border-gray rounded-lg">
               <span className="text-sm text-dark-text">Gross Revenue</span>
               <span className="text-sm font-bold text-primary-blue">
-                ${totalRevenue.toLocaleString()}
+                {formatBDT(totalRevenue)}
               </span>
             </div>
             <div className="flex justify-between p-2 border border-border-gray rounded-lg">
               <span className="text-sm text-dark-text">Total Expenses</span>
               <span className="text-sm font-bold text-yellow-600">
-                ${totalCost.toLocaleString()}
+                {formatBDT(totalCost)}
               </span>
             </div>
             <div className="flex justify-between p-2 border border-border-gray rounded-lg">
@@ -503,7 +551,7 @@ export default function EnhancedDashboard() {
                   isProfit ? "text-success" : "text-red-600"
                 }`}
               >
-                ${Math.abs(totalProfit).toLocaleString()}
+                {formatBDT(Math.abs(totalProfit))}
               </span>
             </div>
             <div className="flex justify-between p-2 bg-light-gray rounded-lg">
@@ -540,20 +588,20 @@ export default function EnhancedDashboard() {
             <div className="flex justify-between p-2 border border-border-gray rounded-lg">
               <span className="text-sm text-dark-text">Avg Sale Value</span>
               <Badge className="bg-success/10 text-success border-success/20">
-                ${(totalRevenue / (salesCount || 1)).toFixed(2)}
+                {formatBDT(totalRevenue / (salesCount || 1))}
               </Badge>
             </div>
             <div className="flex justify-between p-2 border border-border-gray rounded-lg">
-              <span className="text-sm text-dark-text">Low Stock Items</span>
+              <span className="text-sm text-dark-text">Total Due</span>
               <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                8
+                {formatBDT(totalDue)}
               </Badge>
             </div>
           </CardContent>
         </Card>
 
         {/* Growth vs Previous */}
-        <Card className="border-border-gray shadow-none">
+        {/*  <Card className="border-border-gray shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-dark-blue">
               Growth vs Previous
@@ -579,7 +627,7 @@ export default function EnhancedDashboard() {
               <TrendingUp className="h-8 w-8 text-success" />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
@@ -606,7 +654,7 @@ function DashboardStat({
             <p className="text-2xl font-bold text-dark-blue mt-1">{value}</p>
             <div className="flex gap-1 items-center mt-1">
               {changeIcon}
-              <span className="text-xs text-success font-medium">
+              <span className="text-xs hidden text-success font-medium">
                 {changeLabel}
               </span>
               <span className="text-xs text-dark-text/60">{label}</span>
@@ -625,6 +673,128 @@ function DashboardStat({
   );
 }
 
-function capitalize(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+// Skeleton Component (unchanged)
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      {/* Header */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+
+      {/* Tabs */}
+      <div className="px-4">
+        <div className="flex gap-1 bg-light-gray p-0.5 rounded-lg border border-border-gray w-fit">
+          {Array(4)
+            .fill(0)
+            .map((_, i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded" />
+            ))}
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {Array(4)
+          .fill(0)
+          .map((_, i) => (
+            <Card key={i} className="border-border-gray shadow-none">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-7 w-24" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+      </div>
+
+      {/* Banner */}
+      <div className="px-4">
+        <Card className="border-border-gray shadow-none">
+          <CardContent className="p-4">
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="px-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <Card className="border-border-gray shadow-none xl:col-span-2">
+          <CardHeader className="pb-3 space-y-2">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-80 w-full" />
+          </CardContent>
+        </Card>
+        <Card className="border-border-gray shadow-none">
+          <CardHeader className="pb-3 space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-48" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-72 w-full" />
+          </CardContent>
+        </Card>
+        <Card className="border-border-gray shadow-none">
+          <CardHeader className="pb-3 space-y-1">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3 w-40" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Skeleton className="h-72 w-full" />
+              <div className="pt-3 border-t border-border-gray space-y-2">
+                <div className="grid grid-cols-3 gap-1 h-4">
+                  {Array(3)
+                    .fill(0)
+                    .map((_, i) => (
+                      <Skeleton key={i} className="w-full" />
+                    ))}
+                </div>
+                {Array(5)
+                  .fill(0)
+                  .map((_, i) => (
+                    <div key={i} className="grid grid-cols-3 gap-1 h-6">
+                      {Array(3)
+                        .fill(0)
+                        .map((_, j) => (
+                          <Skeleton key={j} className="w-full h-full" />
+                        ))}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Cards */}
+      <div className="px-4 grid grid-cols-1 xl:grid-cols-3 gap-3">
+        {Array(3)
+          .fill(0)
+          .map((_, i) => (
+            <Card key={i} className="border-border-gray shadow-none">
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {Array(4)
+                  .fill(0)
+                  .map((_, j) => (
+                    <Skeleton key={j} className="h-10 w-full" />
+                  ))}
+              </CardContent>
+            </Card>
+          ))}
+      </div>
+    </div>
+  );
 }

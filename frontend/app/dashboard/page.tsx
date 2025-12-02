@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -41,6 +41,8 @@ import {
   differenceInDays,
   startOfMonth,
 } from "date-fns";
+import { getUser } from "@/actions/custom-response";
+import { userInfo } from "@/@types/user";
 // Helper to format period for chart labels
 const formatPeriodLabel = (period: Period, range: string): string => {
   const timeZone = "Asia/Dhaka";
@@ -144,6 +146,14 @@ export default function EnhancedDashboard() {
   const [selectedRange, setSelectedRange] = useState<
     "today" | "week" | "month" | "year"
   >("month");
+  const [user, setUser] = useState<userInfo | null>();
+  useEffect(() => {
+    const getuserInfo = async () => {
+      const user = await getUser();
+      setUser(user);
+    };
+    getuserInfo();
+  }, []);
   const numberOfTime = TimeBaseValue[selectedRange];
 
   const { data: dashboardData, isPending } = useQueryWrapper<DashboardResponse>(
@@ -154,7 +164,8 @@ export default function EnhancedDashboard() {
       refetchOnMount: false,
       refetchOnReconnect: false,
     },
-    numberOfTime
+    numberOfTime,
+    `dashboard-${selectedRange}-${user?.slug}`
   );
 
   if (isPending) {

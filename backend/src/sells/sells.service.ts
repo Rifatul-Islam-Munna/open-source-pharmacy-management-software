@@ -10,10 +10,17 @@ import { PipelineStage } from 'mongoose';
 @Injectable()
 export class SellsService {
   constructor(private tenantConnectionService:TenantConnectionService){}
- async create(createSellDto: CreateSellDto) {
+  private getSalesModel(slug:string){
+    return  this.tenantConnectionService.getModel<SaleDocument>(slug,Sale.name,SaleSchema)
+  }
+  private getStoreModel(slug:string){
+     return this.tenantConnectionService.getModel(slug,ShopStockBatch.name,ShopStockBatchSchema);
+  }
+ async create(createSellDto: CreateSellDto,userSlug:string) {
+  
 
-    const getSalesModel = this.tenantConnectionService.getModel('test-pharma-user-location-1',Sale.name,SaleSchema);
-    const getStoreModel = this.tenantConnectionService.getModel('test-pharma-user-location-1',ShopStockBatch.name,ShopStockBatchSchema);
+    const getSalesModel = this.getSalesModel(userSlug);
+    const getStoreModel = this.getStoreModel(userSlug);
 
     const bulkOps = createSellDto.items.map(item => ({
   updateOne: {
@@ -40,12 +47,8 @@ export class SellsService {
     
   }
 
-async findAll(query: SalesQueryDto) {
-  const getSalesModel = this.tenantConnectionService.getModel<SaleDocument>(
-    'test-pharma-user-location-1',
-    Sale.name,
-    SaleSchema
-  );
+async findAll(query: SalesQueryDto,userSlug:string) {
+  const getSalesModel = this.getSalesModel(userSlug);
   
 
   // Default values
@@ -152,12 +155,8 @@ async findAll(query: SalesQueryDto) {
   };
 }
 
-async findAllForCustomerSales(query: CustomerSalesQueryDto) {
-  const SaleModel = this.tenantConnectionService.getModel<SaleDocument>(
-    'test-pharma-user-location-1',
-    Sale.name,
-    SaleSchema,
-  );
+async findAllForCustomerSales(query: CustomerSalesQueryDto,userSlug:string) {
+  const SaleModel = this.getSalesModel(userSlug);
 
   const match: any = {};
 
@@ -249,12 +248,8 @@ async findAllForCustomerSales(query: CustomerSalesQueryDto) {
   };
 }
 
-async markAsPaid(id: string) {
-    const getSalesModel = this.tenantConnectionService.getModel<SaleDocument>(
-    'test-pharma-user-location-1',
-    Sale.name,
-    SaleSchema
-  );
+async markAsPaid(id: string,userSlug:string) {
+    const getSalesModel = this.getSalesModel(userSlug);
   const findOne = await getSalesModel.findById(id).lean();
   if(!findOne) throw new HttpException('Sale not found',HttpStatus.BAD_REQUEST)
 
@@ -270,12 +265,8 @@ async markAsPaid(id: string) {
 
 
 
-async getDashboardData(filter: DashboardDateRangeDto) {
-  const SaleModel = this.tenantConnectionService.getModel<SaleDocument>(
-    'test-pharma-user-location-1',
-    Sale.name,
-    SaleSchema,
-  );
+async getDashboardData(filter: DashboardDateRangeDto,userSlug:string) {
+  const SaleModel = this.getSalesModel(userSlug);
 
   let startDate: Date;
   let endDate: Date;

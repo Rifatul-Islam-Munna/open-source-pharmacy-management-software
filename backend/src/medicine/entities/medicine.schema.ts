@@ -122,7 +122,8 @@ export enum DosageType {
 
 
 
-@Schema({timestamps:true,autoIndex:true})
+@Schema({timestamps:true})
+
 
 export class Medicine {
  @Prop({text:true,index:true,required:true})
@@ -156,4 +157,4 @@ export class Medicine {
 
 export const MedicineSchema = SchemaFactory.createForClass(Medicine);
 
-
+MedicineSchema.index({ name: 'text' });

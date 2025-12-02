@@ -1,1 +1,1 @@
-export const GLOBALDATABSE = 'Pharma-1';
+export const GLOBALDATABSE = 'my-saas-pharmacy-software-user-db';

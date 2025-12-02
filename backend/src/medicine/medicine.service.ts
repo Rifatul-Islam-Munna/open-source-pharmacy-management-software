@@ -12,7 +12,10 @@ import pLimit from 'p-limit';
 export class MedicineService {
   private logger = new Logger(MedicineService.name);
   constructor(private tenantConnectionService:TenantConnectionService, @InjectModel(Medicine.name) private medicineModel:Model<MedicineDocument>){}
-  async create(createMedicineDto: CreateMedicineDto) {
+  private getModel(slug:string){
+ return this.tenantConnectionService.getModel(slug,Medicine.name,MedicineSchema)
+  }
+  async create(createMedicineDto: CreateMedicineDto,slugShop:string) {
     const rawSlug = `${createMedicineDto.name}-${createMedicineDto.dosageType}-${createMedicineDto.generic}-${createMedicineDto.strength}-${createMedicineDto.manufacturer}`;
 
     const slug = slugify(rawSlug)
@@ -22,7 +25,7 @@ export class MedicineService {
       ...createMedicineDto,
       slug:slug
     }
-    const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+    const getMedicineModel = this.getModel(slugShop)
 
 
     const create = await getMedicineModel.create(finalData);
@@ -32,9 +35,9 @@ export class MedicineService {
     return create;
   }
 
-  async findAll(query:getAllMedicineDto) {
+  async findAll(query:getAllMedicineDto,userSlug:string) {
     const {name} = query
-    const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+    const getMedicineModel = this.getModel(userSlug)
      if (!name) {
       const getAllMedicin = await getMedicineModel.find().sort({name:1}).lean().limit(30);
       return getAllMedicin
@@ -49,8 +52,9 @@ export class MedicineService {
   .lean();
       return getAllMedicin
   }
-  async findWithPagination (query:PaginationDto){
-    const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+  async findWithPagination (query:PaginationDto,userSlug:string){
+    const getMedicineModel = this.getModel(userSlug)
+    
    const { name, page = 1, limit = 10 } = query;
       const skip = (page - 1) * limit;
 
@@ -85,7 +89,7 @@ export class MedicineService {
 
   }
 
-async uploadBulkFile(medicines: CreateMedicineDto[]) {
+async uploadBulkFile(medicines: CreateMedicineDto[],useSlug:string) {
   // Generate slugs for all medicines first
   const medicinesWithSlugs = medicines.map(medicine => {
     const rawSlug = `${medicine.name}-${medicine.dosageType}-${medicine.generic}-${medicine.strength}-${medicine.manufacturer}`;
@@ -103,11 +107,7 @@ async uploadBulkFile(medicines: CreateMedicineDto[]) {
     batches.push(medicinesWithSlugs.slice(i, i + batchSize));
   }
 
-  const getMedicineModel = await this.tenantConnectionService.getModel<MedicineDocument>(
-    "pharmicy-1",
-    Medicine.name,
-    MedicineSchema
-  );
+  const getMedicineModel = this.getModel(useSlug)
 
   const insertPromises = batches.map(batch =>
     limit(() => getMedicineModel.insertMany(batch, { ordered: false }))

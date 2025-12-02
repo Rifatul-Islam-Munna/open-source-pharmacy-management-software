@@ -13,9 +13,17 @@ import { AlertItemDto, GetAlertsResponseDto } from './dto/alert-response.dto';
 export class ShopService {
   private logger = new Logger(ShopService.name)
   constructor(private tenantConnectionService:TenantConnectionService){}
-  async create(createShopDto: CreateShopDto) {
+  private getShopStockBatchModel(slug:string){
+    return this.tenantConnectionService.getModel(slug,ShopStockBatch.name,ShopStockBatchSchema);
+    
+  }
+  private getMedicineModel(slug:string){
+    return this.tenantConnectionService.getModel(slug,Medicine.name,MedicineSchema);
+    
+  }
+  async create(createShopDto: CreateShopDto,userSlug:string) {
     this.logger.log("create-shop",createShopDto)
-    const connection = this.tenantConnectionService.getModel("test-pharma-user-location-1",ShopStockBatch.name,ShopStockBatchSchema);
+    const connection = this.getShopStockBatchModel(userSlug)
      const dataToCreate = {
     ...createShopDto,
     shopMedicineId: new Types.ObjectId(createShopDto.shopMedicineId)
@@ -32,7 +40,7 @@ export class ShopService {
 
 // Assume SearchShopProductDto is exactly as previously given
 
- async findAll(query: SearchShopProductDto) {
+ async findAll(query: SearchShopProductDto,userSlug:string) {
   const {
     searchQuery,
     page = 1,
@@ -43,18 +51,10 @@ export class ShopService {
 
   this.logger.debug("query",query,"page",page,"limit",limit,"stockStatus",stockStatus,"sortBy",sortBy)
 
-  const shopStockBatchModel = this.tenantConnectionService.getModel(
-    "test-pharma-user-location-1",
-    ShopStockBatch.name,
-    ShopStockBatchSchema
-  );
-  await shopStockBatchModel.syncIndexes()
+  const shopStockBatchModel = this.getShopStockBatchModel(userSlug);
   
-  const medicineModel = this.tenantConnectionService.getModel(
-    "pharmicy-1",
-    Medicine.name,
-    MedicineSchema
-  );
+  
+  const medicineModel = this.getMedicineModel(userSlug);
 
   // Build base filters for batches
   const filter: any = {};
@@ -114,12 +114,8 @@ export class ShopService {
 }
 
 
-async getAlert(query:GetAlertsQueryDto): Promise<GetAlertsResponseDto> {
-  const shopStockBatchModel = this.tenantConnectionService.getModel<ShopStockBatchDocument>(
-    "test-pharma-user-location-1",
-    ShopStockBatch.name,
-    ShopStockBatchSchema
-  );
+async getAlert(query:GetAlertsQueryDto,userSlug:string): Promise<GetAlertsResponseDto> {
+  const shopStockBatchModel = this.getShopStockBatchModel(userSlug);
 
   const {
     filterType,
@@ -322,12 +318,8 @@ async getAlert(query:GetAlertsQueryDto): Promise<GetAlertsResponseDto> {
     return `This action returns a #${id} shop`;
   }
 
- async update( updateShopDto: UpdateShopDto) {
-    const shopStockBatchModel = this.tenantConnectionService.getModel(
-    "test-pharma-user-location-1",
-    ShopStockBatch.name,
-    ShopStockBatchSchema
-  );
+ async update( updateShopDto: UpdateShopDto,userSlug:string) {
+    const shopStockBatchModel = this.getShopStockBatchModel(userSlug);
     const data = await shopStockBatchModel.findOneAndUpdate({ _id: updateShopDto.id }, {$set:updateShopDto}, { new: true });
     if(!data){
       throw new HttpException('Shop not updated', 400);
@@ -335,12 +327,8 @@ async getAlert(query:GetAlertsQueryDto): Promise<GetAlertsResponseDto> {
     return data
   }
 
-  async remove(id: string) {
-      const shopStockBatchModel = this.tenantConnectionService.getModel(
-    "test-pharma-user-location-1",
-    ShopStockBatch.name,
-    ShopStockBatchSchema
-  );
+  async remove(id: string,userSlug:string) {
+      const shopStockBatchModel = this.getShopStockBatchModel(userSlug);
     const data = await shopStockBatchModel.findOneAndDelete({ _id: id });
     if(!data){
       throw new HttpException('Shop not deleted', 400);

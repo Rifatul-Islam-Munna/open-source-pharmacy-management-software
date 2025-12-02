@@ -10,11 +10,11 @@ import {type Response } from 'express';
 export class PurchaseOrderService {
   private logger = new Logger(ShopService.name)
     constructor(private tenantConnectionService:TenantConnectionService){}
-    private getTheModel() {
-      return this.tenantConnectionService.getModel<PurchaseOrderDocument>("test-pharma-user-location-1",PurchaseOrder.name,PurchaseOrderSchema);
+    private getTheModel(slug:string) {
+      return this.tenantConnectionService.getModel<PurchaseOrderDocument>(slug,PurchaseOrder.name,PurchaseOrderSchema);
     }
- async create(createPurchaseOrderDto: CreatePurchaseOrderDto) {
-    const model = this.getTheModel();
+ async create(createPurchaseOrderDto: CreatePurchaseOrderDto,userSlug:string) {
+    const model = this.getTheModel(userSlug);
       const createdOrder = model.create({
       ...createPurchaseOrderDto,
       status: createPurchaseOrderDto.status ?? 'pending',
@@ -23,7 +23,7 @@ export class PurchaseOrderService {
     return createdOrder
   }
 
- async findAll(query: PurchaseOrdersFilterDto) { 
+ async findAll(query: PurchaseOrdersFilterDto,userSlug:string) { 
   const {
     search,
     status = 'all',
@@ -31,7 +31,7 @@ export class PurchaseOrderService {
     page = 1,
     rowsPerPage = 6,
   } = query;
-  const model = this.getTheModel();
+  const model = this.getTheModel(userSlug);
 
   const match: any = {};
 
@@ -89,8 +89,8 @@ export class PurchaseOrderService {
   };
 }
 
-async downloadAsCsv(res: Response) {
-    const model = this.getTheModel();
+async downloadAsCsv(res: Response,userSlug:string) {
+    const model = this.getTheModel(userSlug);
 
     // Set CSV response headers
     res.setHeader('Content-Type', 'text/csv');
@@ -127,8 +127,8 @@ async downloadAsCsv(res: Response) {
     return `This action returns a #${id} purchaseOrder`;
   }
 
-  async update( updatePurchaseOrderDto: UpdatePurchaseOrderDto) {
-    const model = await this.getTheModel();
+  async update( updatePurchaseOrderDto: UpdatePurchaseOrderDto,userSlug:string) {
+    const model = await this.getTheModel(userSlug);
 
     const update  = await model.findOneAndUpdate({ _id: updatePurchaseOrderDto.id }, {$set:updatePurchaseOrderDto}, { new: true });
     if(!update){
@@ -137,8 +137,8 @@ async downloadAsCsv(res: Response) {
     return update
 
   }
-  async updateMultiple(payload:updateMultiple){
-    const model = await this.getTheModel();
+  async updateMultiple(payload:updateMultiple,userSlug:string) {
+    const model = await this.getTheModel(userSlug);
     const { ids, type } = payload
     if(type === 'delete'){
       const update  = await model.deleteMany({ _id: { $in: ids } });

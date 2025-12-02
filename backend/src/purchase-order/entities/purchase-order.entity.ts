@@ -22,3 +22,4 @@ export class PurchaseOrder {
 }
 
 export const PurchaseOrderSchema = SchemaFactory.createForClass(PurchaseOrder);
+PurchaseOrderSchema.index({ medicine: 'text' });

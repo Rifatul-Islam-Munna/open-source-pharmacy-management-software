@@ -1,15 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Logger } from '@nestjs/common';
 import { MedicineService } from './medicine.service';
-import { CreateMedicineDto, getAllMedicineDto, PaginationDto } from './dto/create-medicine.dto';
+import { CreateMedicineDto, getAllMedicineDto, multipleData, PaginationDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 
 @Controller('medicine')
 export class MedicineController {
+  private logger = new Logger(MedicineController.name);
   constructor(private readonly medicineService: MedicineService) {}
 
   @Post()
   create(@Body() createMedicineDto: CreateMedicineDto) {
     return this.medicineService.create(createMedicineDto);
+  }
+  @Post('post-multiple')
+  postMultiple(@Body() createMedicineDto: CreateMedicineDto[]) {
+    
+    
+    return this.medicineService.uploadBulkFile(createMedicineDto);
   }
 
   @Get()

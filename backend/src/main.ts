@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import  compression from 'compression';
 import { AllExceptionsFilter } from 'lib/all-exceptions.filter';
+import { json, urlencoded } from 'express';
 
 
 async function bootstrap() {
@@ -15,6 +16,8 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors({origin: true, credentials: true,optionsSuccessStatus: 200});
   app.use(cookieParser());
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

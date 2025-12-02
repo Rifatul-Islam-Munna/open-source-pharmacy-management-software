@@ -48,6 +48,14 @@ export class CreateMedicineDto {
   slug: string;
 }
 
+
+export class multipleData{
+  @ApiProperty({ type: [CreateMedicineDto] })
+  data: CreateMedicineDto[]
+}
+
+
+
 export class getAllMedicineDto{
   @ApiPropertyOptional({ example: 'Napa' })
   @IsOptional()

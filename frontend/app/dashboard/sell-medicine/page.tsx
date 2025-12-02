@@ -197,10 +197,10 @@ export default function SellMedicinePage() {
                             <div className="flex items-center justify-between w-full">
                               <div>
                                 <p className="text-sm font-medium text-dark-blue">
-                                  {medicine.name}
+                                  {medicine?.name}
                                 </p>
                                 <p className="text-xs text-dark-text/60">
-                                  Stock: {medicine.totalUnits}
+                                  Stock: {medicine?.totalUnits}
                                 </p>
                                 <p className="text-xs text-dark-text/60">
                                   Batch:{" "}
@@ -216,7 +216,7 @@ export default function SellMedicinePage() {
                                 </p>
                               </div>
                               <Badge className="bg-primary-blue/10 text-primary-blue border-primary-blue/20">
-                                ৳{medicine.sellingPrice.toFixed(2)}
+                                ৳{medicine?.sellingPrice?.toFixed(2)}
                               </Badge>
                             </div>
                           </CommandItem>

@@ -141,55 +141,12 @@ export default function AddMedicinePage() {
   const totalUnits = currentMedicine?.totalUnits || 0;
 
   const getDogeIcon = (value: string) => {
-    if (value === DogeType.Tablet) {
-      return (
-        <Badge
-          className=" text-white bg-primary-blue hover:bg-dark-blue"
-          variant={"default"}
-        >
-          <Tablets className=" w-5 h-5 text-white" />{" "}
-        </Badge>
-      );
-    }
-    if (value === DogeType.Capsule) {
-      return (
-        <Badge
-          className=" text-white  bg-primary-blue hover:bg-dark-blue"
-          variant={"default"}
-        >
-          {" "}
-          <Pill className=" w-5 h-5 text-white" />
-        </Badge>
-      );
-    }
-    if (value === DogeType.Syrup) {
-      return (
-        <Badge
-          className=" text-white  bg-primary-blue hover:bg-dark-blue"
-          variant={"default"}
-        >
-          {" "}
-          <BottleWine className=" w-5 h-5 text-white" />{" "}
-        </Badge>
-      );
-    }
-    if (value === DogeType.Injection) {
-      return (
-        <Badge
-          className=" text-white  bg-primary-blue hover:bg-dark-blue"
-          variant={"default"}
-        >
-          <Syringe className=" w-5 h-5 text-white" />
-        </Badge>
-      );
-    }
     return (
       <Badge
         className=" text-white  bg-primary-blue hover:bg-dark-blue"
         variant={"default"}
       >
-        {" "}
-        <MilkOff className=" w-5 h-5 text-white" />{" "}
+        {value}
       </Badge>
     );
   };
@@ -262,7 +219,7 @@ export default function AddMedicinePage() {
                             {data?.map((medicine) => (
                               <CommandItem
                                 key={medicine._id}
-                                value={medicine.name}
+                                value={`${medicine.name}-${medicine.strength}-${medicine.dosageType}-${medicine.generic}`}
                                 onSelect={() => {
                                   updateCurrentMedicine({
                                     name: medicine.name,

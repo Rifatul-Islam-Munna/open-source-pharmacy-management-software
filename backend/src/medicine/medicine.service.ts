@@ -6,6 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Medicine, MedicineDocument, MedicineSchema } from './entities/medicine.schema';
 import { Model } from 'mongoose';
 import slugify from '@sindresorhus/slugify';
+import pLimit from 'p-limit';
 
 @Injectable()
 export class MedicineService {
@@ -35,7 +36,7 @@ export class MedicineService {
     const {name} = query
     const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
      if (!name) {
-      const getAllMedicin = await getMedicineModel.find().sort({name:1}).lean().limit(20);
+      const getAllMedicin = await getMedicineModel.find().sort({name:1}).lean().limit(30);
       return getAllMedicin
     
   }
@@ -83,6 +84,50 @@ export class MedicineService {
     };
 
   }
+
+async uploadBulkFile(medicines: CreateMedicineDto[]) {
+  // Generate slugs for all medicines first
+  const medicinesWithSlugs = medicines.map(medicine => {
+    const rawSlug = `${medicine.name}-${medicine.dosageType}-${medicine.generic}-${medicine.strength}-${medicine.manufacturer}`;
+    return {
+      ...medicine,
+      slug: slugify(rawSlug) // Add slug options as needed
+    };
+  });
+
+  const limit = pLimit(5);
+  const batchSize = 1000;
+  const batches: CreateMedicineDto[][] = [];
+  
+  for (let i = 0; i < medicinesWithSlugs.length; i += batchSize) {
+    batches.push(medicinesWithSlugs.slice(i, i + batchSize));
+  }
+
+  const getMedicineModel = await this.tenantConnectionService.getModel<MedicineDocument>(
+    "pharmicy-1",
+    Medicine.name,
+    MedicineSchema
+  );
+
+  const insertPromises = batches.map(batch =>
+    limit(() => getMedicineModel.insertMany(batch, { ordered: false }))
+  );
+
+  const results = await Promise.allSettled(insertPromises);
+  
+  const successful = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+
+  this.logger.log("insertedBatches", successful, "failedBatches", failed);
+
+  return {
+    success: failed === 0,
+    insertedBatches: successful,
+    failedBatches: failed,
+  };
+}
+
+
 
   findOne(id: number) {
     return `This action returns a #${id} medicine`;

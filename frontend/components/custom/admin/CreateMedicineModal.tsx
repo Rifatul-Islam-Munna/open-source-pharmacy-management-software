@@ -22,6 +22,7 @@ import { Plus, X, Loader2 } from "lucide-react";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { useQueryClient } from "@tanstack/react-query";
 import { revlidateGlobalMedicin } from "@/actions/Refresh-action";
+import { DosageType } from "@/lib/staticData";
 
 interface FormData {
   name: string;
@@ -106,6 +107,113 @@ export function CreateMedicineModal({
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
+  const dosageTypeOptions = [
+    DosageType.Tablet,
+    DosageType.Capsule,
+    DosageType.Syrup,
+    DosageType.Injection,
+    DosageType.CapsuleControlledRelease,
+    DosageType.CapsuleDelayedRelease,
+    DosageType.CapsuleExtendedRelease,
+    DosageType.CapsuleModifiedRelease,
+    DosageType.CapsuleSustainedRelease,
+    DosageType.CapsuleTimedRelease,
+    DosageType.ChewableTablet,
+    DosageType.ChewingGumTablet,
+    DosageType.Cream,
+    DosageType.DentalGel,
+    DosageType.DialysisSolution,
+    DosageType.DispersibleTablet,
+    DosageType.EarDrop,
+    DosageType.EffervescentGranules,
+    DosageType.EffervescentPowder,
+    DosageType.EffervescentTablet,
+    DosageType.EmulsionForInfusion,
+    DosageType.EyeCapsule,
+    DosageType.FlashTablet,
+    DosageType.Gel,
+    DosageType.HandRub,
+    DosageType.IMInjection,
+    DosageType.IMIAInjection,
+    DosageType.IMIVInjection,
+    DosageType.IMSCInjection,
+    DosageType.IVInfusion,
+    DosageType.IVInjection,
+    DosageType.IVInjectionOrInfusion,
+    DosageType.IVSCInjection,
+    DosageType.InhalationCapsule,
+    DosageType.Inhaler,
+    DosageType.IntraArticularInjection,
+    DosageType.IntracameralInjection,
+    DosageType.IntraspinalInjection,
+    DosageType.IntratrachealSuspension,
+    DosageType.IntravitrealInjection,
+    DosageType.IrrigationSolution,
+    DosageType.Liquid,
+    DosageType.LiquidCleanserSoap,
+    DosageType.LongActingInjection,
+    DosageType.LongActingTablet,
+    DosageType.Lotion,
+    DosageType.MUPSTablet,
+    DosageType.MedicatedBar,
+    DosageType.Microgranules,
+    DosageType.Mouthwash,
+    DosageType.MuscleRub,
+    DosageType.NailLacquer,
+    DosageType.NasalDrop,
+    DosageType.NasalOintment,
+    DosageType.NasalSpray,
+    DosageType.NebuliserSolution,
+    DosageType.NebuliserSuspension,
+    DosageType.OROSTablet,
+    DosageType.OcularSpray,
+    DosageType.Ointment,
+    DosageType.OphthalmicEmulsion,
+    DosageType.OphthalmicGel,
+    DosageType.OphthalmicOintment,
+    DosageType.OphthalmicSolution,
+    DosageType.OphthalmicSuspension,
+    DosageType.OralEmulsion,
+    DosageType.OralGel,
+    DosageType.OralPaste,
+    DosageType.OralPowder,
+    DosageType.OralSolubleFilm,
+    DosageType.OralSolution,
+    DosageType.OralSuspension,
+    DosageType.PediatricDrops,
+    DosageType.PowderForInjection,
+    DosageType.PowderForSolution,
+    DosageType.PowderForSuspension,
+    DosageType.RectalOintment,
+    DosageType.RectalSaline,
+    DosageType.RespiratorSolution,
+    DosageType.RetardTablet,
+    DosageType.SCInjection,
+    DosageType.ScalpLotion,
+    DosageType.ScalpOintment,
+    DosageType.ScalpSolution,
+    DosageType.Shampoo,
+    DosageType.Solution,
+    DosageType.SolutionForInhalation,
+    DosageType.SprinkleCapsule,
+    DosageType.SublingualTablet,
+    DosageType.Suppository,
+    DosageType.SurgicalScrub,
+    DosageType.TopicalGel,
+    DosageType.TopicalPowder,
+    DosageType.TopicalSolution,
+    DosageType.TopicalSpray,
+    DosageType.TopicalSuspension,
+    DosageType.TransdermalPatch,
+    DosageType.VaginalCream,
+    DosageType.VaginalGel,
+    DosageType.VaginalPessary,
+    DosageType.VaginalSuppository,
+    DosageType.VaginalTablet,
+    DosageType.ViscoelasticSolution,
+    DosageType.ViscousEyeDrop,
+    DosageType.Other,
+  ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -161,12 +269,12 @@ export function CreateMedicineModal({
                 <SelectTrigger>
                   <SelectValue placeholder="Select dosage type" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Tablet">Tablet</SelectItem>
-                  <SelectItem value="Capsule">Capsule</SelectItem>
-                  <SelectItem value="Syrup">Syrup</SelectItem>
-                  <SelectItem value="Injection">Injection</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                <SelectContent className="max-h-72">
+                  {dosageTypeOptions.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {errors.dosageType && (

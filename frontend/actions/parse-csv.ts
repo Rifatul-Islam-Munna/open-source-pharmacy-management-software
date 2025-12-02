@@ -1,5 +1,7 @@
 'use server';
 import Papa from 'papaparse';
+import pLimit from 'p-limit';
+import { PostRequestAxios } from '@/api-hooks/api-hook';
 
 export async function parseCSVAction(formData: FormData) {
   try {
@@ -44,6 +46,28 @@ export async function parseCSVAction(formData: FormData) {
       .filter(row => row.name.length > 0);
 
     console.log('Final medicines:', medicines.length); // ✅ Server logs
+     const chunkSize = 500;
+     const chunks: any[][] = [];
+     for (let i = 0; i < medicines.length; i += chunkSize) {
+    chunks.push(medicines.slice(i, i + chunkSize));
+  }
+    const limit = pLimit(5);
+     const results = await Promise.allSettled(
+    chunks.map((chunk, i) =>
+      limit( async () =>
+      {
+          const [response, error] = await PostRequestAxios(`/medicine/post-multiple`,chunk)
+            if (error) {
+        throw error;
+      }
+       return response;
+      }
+     
+       
+      )
+    )
+  );
+  console.log(results);
 
     return { 
       medicines,

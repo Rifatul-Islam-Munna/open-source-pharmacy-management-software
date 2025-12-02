@@ -1,8 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto, LoginUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from 'lib/pagination.dto';
+import { AuthGuard, type  ExpressRequest } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { UserType } from './entities/user.schema';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('user')
 export class UserController {
@@ -12,14 +16,23 @@ export class UserController {
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
+  @Post('create-worker-user')
+  @UseGuards(AuthGuard)
+  @Roles(UserType.ADMIN,UserType.EDITOR)
+  createWorkerUser(@Body() createUserDto: CreateUserDto,@Req() req:ExpressRequest) {
+    return this.userService.createWorker(createUserDto,req.user);
+  }
   @Post('signin-user')
   signin(@Body() createUserDto: LoginUserDto) {
     return this.userService.signIn(createUserDto);
   }
 
   @Get('find-all-user')
-  findAll(@Query() query:PaginationDto) {
-    return this.userService.findAll(query);
+  @UseGuards(AuthGuard,RolesGuard)
+  @Roles(UserType.ADMIN,UserType.EDITOR)
+ 
+  findAll(@Query() query:PaginationDto,@Req() req:ExpressRequest) {
+    return this.userService.findAll(query,req.user.id);
   }
 
  

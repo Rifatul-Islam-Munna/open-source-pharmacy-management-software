@@ -8,6 +8,7 @@ export enum UserType {
   ADMIN = 'admin',
   EDITOR = 'editor',
   USER = 'user',
+  WORKER= 'worker'
 }
 
 @Schema({ timestamps: true, autoIndex: true })
@@ -15,13 +16,15 @@ export class User {
   @Prop({  enum: UserType,default: UserType.USER })
   type: UserType;
 
-  @Prop({ required: true })
+  @Prop({required:false})
   ownerName: string;
 
-  @Prop({ required: true })
+  @Prop()
   shopName: string;
+  @Prop()
+  mobileNumber: string;
 
-  @Prop({ required: true })
+  @Prop()
   location: string;
 
   @Prop({ required: true, unique: true })
@@ -38,6 +41,16 @@ export class User {
 
   @Prop({ default: false })
   isDeleted: boolean;
+
+  @Prop()
+  workerSlug?: string // this should be original slug of wwoner for db check ok
+
+  @Prop()
+  shopId?: string
+  @Prop()
+  workerName?: string
+
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

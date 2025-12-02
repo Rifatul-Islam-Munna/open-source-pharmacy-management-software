@@ -25,7 +25,7 @@ export class RolesGuard implements CanActivate {
           if (!requiredRoles) {
             return true; 
           }
-          const hasRole = requiredRoles.some((role) => user.type?.includes(role));
+          const hasRole = requiredRoles.some((role) => user.role?.includes(role));
           if (!hasRole) {
             throw new ForbiddenException('You do not have the necessary permissions.');
           }

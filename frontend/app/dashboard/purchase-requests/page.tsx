@@ -2,14 +2,13 @@
 
 import { useState, ChangeEvent } from "react";
 import {
-  CheckCircle,
+  CheckCircle as Check,
   XCircle,
   Plus,
   Download,
-  Eye,
-  Check,
   ChevronsUpDown,
-  ArrowUpDown,
+  MoreVertical,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,14 +38,6 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -56,25 +47,25 @@ import {
 } from "@/components/ui/command";
 
 import { cn } from "@/lib/utils";
-
-interface Medicine {
-  label: string;
-  value: string;
-}
-const MEDICINES: Medicine[] = [
-  { label: "Amoxicillin 500mg", value: "amoxicillin-500mg" },
-  { label: "Ibuprofen 200mg", value: "ibuprofen-200mg" },
-  { label: "Paracetamol 500mg", value: "paracetamol-500mg" },
-  { label: "Cetirizine 10mg", value: "cetirizine-10mg" },
-  { label: "Omeprazole 20mg", value: "omeprazole-20mg" },
-];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { useDebounce } from "use-debounce";
+import { Medicine } from "@/@types/global-medicin";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
+import { OrdersResponse } from "@/@types/purches-req";
+import { format, isValid, parseISO } from "date-fns";
 
 interface PurchaseOrder {
   id: string;
   medicine: string;
-  batch: string;
   quantity: number;
-  status: "pending" | "ordered" | "received";
+  status: "pending" | "ordered" | "received" | "cancelled";
   requestDate: Date;
 }
 
@@ -82,7 +73,6 @@ const sampleOrders: PurchaseOrder[] = [
   {
     id: "PO-101",
     medicine: "Amoxicillin 500mg",
-    batch: "BATCH-0912A",
     quantity: 30,
     status: "pending",
     requestDate: new Date("2025-11-08T09:38:00"),
@@ -90,7 +80,6 @@ const sampleOrders: PurchaseOrder[] = [
   {
     id: "PO-103",
     medicine: "Ibuprofen 200mg",
-    batch: "BATCH-0022B",
     quantity: 60,
     status: "ordered",
     requestDate: new Date("2025-11-06T15:04:00"),
@@ -98,7 +87,6 @@ const sampleOrders: PurchaseOrder[] = [
   {
     id: "PO-122",
     medicine: "Paracetamol 500mg",
-    batch: "BATCH-8888X",
     quantity: 100,
     status: "pending",
     requestDate: new Date("2025-11-07T18:21:00"),
@@ -143,16 +131,40 @@ export default function PurchaseRequestsPage() {
 
   // Input Quantity for modal
   const [quantity, setQuantity] = useState(1);
+  const [inputValueQuantity, setInputValueQuantity] = useState(0);
+  const [inputValue, setInputValue] = useState("");
+  const [debouncedSearch] = useDebounce(inputValue, 1000);
+  const query = new URLSearchParams();
+  if (debouncedSearch?.length > 3) query.append("name", debouncedSearch);
+  const { data } = useQueryWrapper<Medicine[]>(
+    ["medicines", debouncedSearch],
+    `/medicine?${query.toString()}`
+  );
+
+  const params = new URLSearchParams();
+  const [text] = useDebounce(search, 1000);
+  if (text.length > 2) params.set("search", text);
+  params.set("page", page.toString());
+  params.set("rowsPerPage", rowsPerPage.toString());
+  params.set("sortBy", sortBy);
+  params.set("status", statusTab);
+
+  const {
+    data: OrderData,
+    isPending,
+    refetch,
+  } = useQueryWrapper<OrdersResponse>(
+    ["medicines", text, page, rowsPerPage, sortBy, statusTab],
+    `/purchase-order?${params.toString()}`
+  );
 
   // Filter text for command input inside popover
-  const [inputValue, setInputValue] = useState("");
 
   // Filtering data
   let filtered = orders.filter(
     (row) =>
       (statusTab === "all" || row.status === statusTab) &&
-      (row.medicine.toLowerCase().includes(search.toLowerCase()) ||
-        row.batch.toLowerCase().includes(search.toLowerCase()))
+      row.medicine.toLowerCase().includes(search.toLowerCase())
   );
 
   // Sorting logic
@@ -167,8 +179,8 @@ export default function PurchaseRequestsPage() {
   });
 
   // Pagination
-  const totalPages = Math.ceil(filtered.length / rowsPerPage);
-  const viewRows = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  const viewRows = OrderData?.data ?? [];
 
   // Status badge helper
   const statusBadge = (status: PurchaseOrder["status"]) => {
@@ -191,6 +203,12 @@ export default function PurchaseRequestsPage() {
             Received
           </Badge>
         );
+      case "cancelled":
+        return (
+          <Badge className="bg-red-500/20  text-red-800 border-red-500/40 text-xs">
+            cancelled
+          </Badge>
+        );
     }
   };
 
@@ -202,28 +220,53 @@ export default function PurchaseRequestsPage() {
   }
 
   function onSelectAll(checked: boolean) {
-    const ids = checked ? viewRows.map((row) => row.id) : [];
+    if (!OrderData) return;
+    const ids = checked ? OrderData?.data?.map((row) => row._id) : [];
     setSelectedIds(ids);
   }
+  const { mutate: updteMultiple, isPending: isUpdating } = useCommonMutationApi(
+    {
+      method: "PATCH",
+      url: "/purchase-order/updated-multiple",
+      successMessage: "Request updated successfully",
+      onSuccess(data) {
+        refetch();
+        setSelectedIds([]);
+      },
+    }
+  );
 
   function onDeleteAll() {
-    setOrders((prev) => prev.filter((row) => !selectedIds.includes(row.id)));
-    setSelectedIds([]);
+    updteMultiple({ ids: selectedIds, type: "delete" });
   }
 
   function onAcceptAll() {
-    setOrders((prev) =>
-      prev.map((row) =>
-        selectedIds.includes(row.id) && row.status === "pending"
-          ? { ...row, status: "ordered" }
-          : row
-      )
-    );
+    updteMultiple({ ids: selectedIds, type: "approve" });
+    console.log(selectedIds);
   }
+  const { mutate: updateStatus, isPending: IsStatusPending } =
+    useCommonMutationApi({
+      method: "PATCH",
+      url: "/purchase-order/updated",
+      successMessage: "Request updated successfully",
+      onSuccess(data) {
+        refetch();
+      },
+    });
+  const onStatusChange = (id: string, status: string) => {
+    const data = {
+      id,
+      status,
+    };
+    updateStatus(data);
+  };
 
   function onCancel(id: string) {
-    setOrders((prev) => prev.filter((row) => row.id !== id));
-    setSelectedIds((prev) => prev.filter((x) => x !== id));
+    const data = {
+      id,
+      status: "cancelled",
+    };
+    updateStatus(data);
   }
 
   function onAddRequest() {
@@ -232,50 +275,69 @@ export default function PurchaseRequestsPage() {
     setQuantity(1);
     setInputValue("");
   }
+  const { mutate, isPending: IsOrderPending } = useCommonMutationApi({
+    method: "POST",
+    url: "/purchase-order",
+    successMessage: "Request added successfully",
+    onSuccess(data) {
+      setModalOpen(false);
+      refetch();
+    },
+  });
 
   function handleModalSubmit() {
     if (!selectedMedicine) return;
-    const label =
-      MEDICINES.find((m) => m.value === selectedMedicine)?.label ||
-      selectedMedicine;
-    const newOrder: PurchaseOrder = {
-      id: `PO-${Math.floor(Math.random() * 100000)}`,
-      medicine: label,
-      batch: "", // no batch
-      quantity,
+
+    const newOrder = {
+      medicine: selectedMedicine,
+      ...(quantity > 0 && { box: quantity }),
+      ...(inputValueQuantity > 0 && { quantity: inputValueQuantity }),
+
       status: "pending",
-      requestDate: new Date(),
     };
-    setOrders((prev) => [newOrder, ...prev]);
-    setModalOpen(false);
+    mutate(newOrder);
+
+    console.log("post-data", newOrder);
   }
 
   // CSV Download utility
-  function downloadCSV() {
-    const headers = ["Medicine", "Batch", "Qty", "Status", "Requested"];
-    const rows = orders.map((o) =>
-      [
-        o.medicine,
-        o.batch,
-        o.quantity,
-        o.status,
-        formatDT(o.requestDate, true),
-      ].join(",")
-    );
-    const blob = new Blob([[headers.join(",")].concat(rows).join("\n")], {
-      type: "text/csv",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `purchase-requests.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  async function downloadCSV() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+    try {
+      const response = await fetch(`${API_URL}/purchase-order/download-csv`, {
+        method: "GET",
+        headers: {
+          // Add your auth headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      // Get the blob (file data)
+      const blob = await response.blob();
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "medicine-order.csv";
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log("CSV downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+    }
   }
 
   return (
-    <div className="space-y-6 bg-white p-6 rounded-md shadow-md mx-auto">
+    <div className="space-y-6 bg-white p-6   mx-auto">
       {/* Header and actions */}
       <div className="border-b border-border-gray pb-3 flex flex-wrap items-center gap-3 justify-between">
         <div>
@@ -332,10 +394,7 @@ export default function PurchaseRequestsPage() {
                     aria-expanded={medicinePopoverOpen}
                     className="w-[200px] justify-between"
                   >
-                    {selectedMedicine
-                      ? MEDICINES.find((m) => m.value === selectedMedicine)
-                          ?.label ?? selectedMedicine
-                      : "Select medicine..."}
+                    {selectedMedicine ? selectedMedicine : "Select medicine..."}
                     <ChevronsUpDown className="opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -352,14 +411,10 @@ export default function PurchaseRequestsPage() {
                     <CommandList>
                       <CommandEmpty>No medicine found.</CommandEmpty>
                       <CommandGroup>
-                        {MEDICINES.filter((m) =>
-                          m.label
-                            .toLowerCase()
-                            .includes(inputValue.toLowerCase())
-                        ).map((med) => (
+                        {data?.map((med) => (
                           <CommandItem
-                            key={med.value}
-                            value={med.value}
+                            key={med.name}
+                            value={med.name}
                             onSelect={(currentValue) => {
                               setSelectedMedicine(
                                 currentValue === selectedMedicine
@@ -371,11 +426,14 @@ export default function PurchaseRequestsPage() {
                             }}
                             className="flex items-center justify-between"
                           >
-                            {med.label}
+                            {med.name}-{" "}
+                            <span className=" text-green-700">
+                              ({med.dosageType})
+                            </span>
                             <Check
                               className={cn(
                                 "ml-auto",
-                                selectedMedicine === med.value
+                                selectedMedicine === med.name
                                   ? "opacity-100"
                                   : "opacity-0"
                               )}
@@ -388,6 +446,10 @@ export default function PurchaseRequestsPage() {
                 </PopoverContent>
               </Popover>
             </div>
+            <span className=" text-xs text-green-600">
+              Either Box or Number do not include both box mean whole box and
+              how many you are ordering
+            </span>
 
             {/* Quantity Input */}
             <div className="w-full">
@@ -395,15 +457,33 @@ export default function PurchaseRequestsPage() {
                 htmlFor="quantity"
                 className="mb-2 block font-medium text-sm text-dark-text"
               >
-                Quantity
+                Quantity (Box)
               </Label>
               <Input
                 id="quantity"
                 type="number"
                 min={1}
-                value={quantity}
+                value={quantity > 0 ? quantity : ""}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setQuantity(Number(e.target.value))
+                }
+                className="w-full rounded-md border border-border-gray px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-primary-blue"
+              />
+            </div>
+            <div className="w-full">
+              <Label
+                htmlFor="quantity"
+                className="mb-2 block font-medium text-sm text-dark-text"
+              >
+                Quantity (Number)
+              </Label>
+              <Input
+                id="quantity"
+                type="number"
+                min={1}
+                value={inputValueQuantity > 0 ? inputValueQuantity : ""}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setInputValueQuantity(Number(e.target.value))
                 }
                 className="w-full rounded-md border border-border-gray px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-primary-blue"
               />
@@ -411,9 +491,14 @@ export default function PurchaseRequestsPage() {
           </section>
           <DialogFooter className="flex justify-end gap-3">
             <Button
-              disabled={!selectedMedicine || quantity < 1}
+              disabled={
+                !selectedMedicine ||
+                (quantity || inputValueQuantity) < 1 ||
+                IsOrderPending
+              }
               onClick={handleModalSubmit}
             >
+              {IsOrderPending && <Loader2 className="animate-spin mr-2" />}{" "}
               Submit
             </Button>
             <Button variant="outline" onClick={() => setModalOpen(false)}>
@@ -426,7 +511,7 @@ export default function PurchaseRequestsPage() {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 px-1">
         <Input
-          placeholder="Search by medicine or batch..."
+          placeholder="Search by medicine..."
           className="max-w-xs h-9 border-border-gray shadow-none"
           value={search}
           onChange={(e) => {
@@ -435,7 +520,9 @@ export default function PurchaseRequestsPage() {
           }}
         />
         <div className="flex gap-1 bg-light-gray p-1 rounded border border-border-gray">
-          {(["all", "pending", "ordered", "received"] as const).map((st) => (
+          {(
+            ["all", "pending", "ordered", "received", "cancelled"] as const
+          ).map((st) => (
             <Button
               key={st}
               size="sm"
@@ -461,7 +548,7 @@ export default function PurchaseRequestsPage() {
               size="sm"
               className="h-9 border-border-gray hover:bg-light-gray flex items-center gap-1"
             >
-              <ArrowUpDown className="h-4 w-4" />
+              <MoreVertical className="h-4 w-4" />
               Sort
             </Button>
           </PopoverTrigger>
@@ -484,11 +571,11 @@ export default function PurchaseRequestsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="qty-desc" id="qty-desc" />
-                  <Label htmlFor="qty-desc">Qty: High to Low</Label>
+                  <Label htmlFor="qty-desc">Box: High to Low</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="qty-asc" id="qty-asc" />
-                  <Label htmlFor="qty-asc">Qty: Low to High</Label>
+                  <Label htmlFor="qty-asc">Box: Low to High</Label>
                 </div>
               </div>
             </RadioGroup>
@@ -535,15 +622,15 @@ export default function PurchaseRequestsPage() {
                   aria-label="Select all rows"
                 />
               </TableHead>
-              <TableHead>Medicine (Batch)</TableHead>
-              <TableHead>Qty</TableHead>
+              <TableHead>Medicine</TableHead>
+              <TableHead>Box</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Requested</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {viewRows.length === 0 ? (
+            {OrderData?.data.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={6}
@@ -553,77 +640,89 @@ export default function PurchaseRequestsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              viewRows.map((order) => (
+              OrderData?.data?.map((order) => (
                 <TableRow
-                  key={order.id}
+                  key={order._id}
                   className="hover:bg-light-gray/30 cursor-pointer transition-colors"
                 >
                   <TableCell>
                     <Checkbox
-                      checked={selectedIds.includes(order.id)}
-                      onCheckedChange={(v) => onSelectRow(order.id, !!v)}
-                      aria-label={`Select order ${order.id}`}
+                      checked={selectedIds.includes(order._id)}
+                      onCheckedChange={(v) => onSelectRow(order._id, !!v)}
+                      aria-label={`Select order ${order._id}`}
                     />
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-dark-blue">
                       {order.medicine}
                     </div>
-                    <div className="text-xs text-dark-text/60">
-                      {order.batch}
-                    </div>
                   </TableCell>
-                  <TableCell>{order.quantity}</TableCell>
-                  <TableCell>{statusBadge(order.status)}</TableCell>
+                  <TableCell>
+                    {order?.box ? `${order.box} Box` : `${order?.quantity} Pcs`}
+                  </TableCell>
+                  <TableCell>{statusBadge(order?.status)}</TableCell>
                   <TableCell>
                     <div className="text-xs">
-                      {formatDT(order.requestDate, true)}
+                      {isValid(parseISO(order.createdAt))
+                        ? format(order.createdAt, "dd MMM yyyy")
+                        : "N/A"}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-border-gray hover:bg-primary-blue/10"
-                        title="View"
-                        aria-label={`View order ${order.id}`}
-                      >
-                        <Eye className="h-4 w-4 text-primary-blue" />
-                      </Button>
-                      {order.status === "pending" && (
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <Button
-                          size="icon"
+                          size="sm"
                           variant="outline"
-                          className="h-8 w-8 border-border-gray hover:bg-red-100"
-                          title="Cancel"
-                          aria-label={`Cancel order ${order.id}`}
-                          onClick={() => onCancel(order.id)}
+                          className="w-8 h-8 p-1 flex justify-center items-center"
+                          aria-label={`Open actions for ${order._id}`}
                         >
-                          <XCircle className="h-4 w-4 text-red-500" />
+                          <MoreVertical className="h-5 w-5" />
                         </Button>
-                      )}
-                      {order.status === "ordered" && (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 border-border-gray hover:bg-success/20"
-                          title="Mark as Received"
-                          aria-label={`Mark order ${order.id} as received`}
-                          onClick={() =>
-                            setOrders((prev) =>
-                              prev.map((row) =>
-                                row.id === order.id
-                                  ? { ...row, status: "received" }
-                                  : row
-                              )
-                            )
-                          }
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-3 flex flex-col gap-3">
+                        <RadioGroup
+                          value={order.status}
+                          onValueChange={(v) => onStatusChange(order._id, v)}
+                          disabled={IsStatusPending}
                         >
-                          <CheckCircle className="h-4 w-4 text-success" />
-                        </Button>
-                      )}
-                    </div>
+                          <div className="flex flex-col gap-2">
+                            <RadioGroupItem
+                              value="pending"
+                              id={`pending-${order._id}`}
+                            />
+                            <Label htmlFor={`pending-${order._id}`}>
+                              Pending
+                            </Label>
+                            <RadioGroupItem
+                              value="ordered"
+                              id={`ordered-${order._id}`}
+                            />
+                            <Label htmlFor={`ordered-${order._id}`}>
+                              Ordered
+                            </Label>
+                            <RadioGroupItem
+                              value="received"
+                              id={`received-${order._id}`}
+                            />
+                            <Label htmlFor={`received-${order._id}`}>
+                              Received
+                            </Label>
+                          </div>
+                        </RadioGroup>
+
+                        {order.status !== "received" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => onCancel(order._id)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                 </TableRow>
               ))
@@ -666,8 +765,11 @@ export default function PurchaseRequestsPage() {
             Previous
           </Button>
           {[
-            ...Array.from(Array(totalPages).keys())
-              .slice(Math.max(0, page - 2), Math.min(totalPages, page + 1))
+            ...Array.from(Array(OrderData?.totalPages).keys())
+              .slice(
+                Math.max(0, page - 2),
+                Math.min(OrderData?.totalPages ?? 1, page + 1)
+              )
               .map((i) => (
                 <Button
                   key={i + 1}
@@ -687,8 +789,10 @@ export default function PurchaseRequestsPage() {
           ]}
           <Button
             variant="outline"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages}
+            onClick={() =>
+              setPage((p) => Math.min(p + 1, OrderData?.totalPages ?? 1))
+            }
+            disabled={page === (OrderData?.totalPages ?? 1)}
             className="h-9 border-border-gray shadow-none"
           >
             Next

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateMedicineDto, getAllMedicineDto } from './dto/create-medicine.dto';
+import { CreateMedicineDto, getAllMedicineDto, PaginationDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 import { TenantConnectionService } from 'src/tenant-connection/tenant-connection.service';
 import { InjectModel } from '@nestjs/mongoose';
@@ -47,6 +47,41 @@ export class MedicineService {
   .limit(20)
   .lean();
       return getAllMedicin
+  }
+  async findWithPagination (query:PaginationDto){
+    const getMedicineModel = await this.tenantConnectionService.getModel("pharmicy-1",Medicine.name,MedicineSchema)
+   const { name, page = 1, limit = 10 } = query;
+      const skip = (page - 1) * limit;
+
+       let searchQuery: any = {};
+         if (name) {
+      // Text search if available, otherwise regex search
+      searchQuery.$text = { $search: name };
+    }
+    const [data, count] = await Promise.all([
+       await getMedicineModel
+        .find(searchQuery)
+        .sort({  createdAt: -1,name:-1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+        await getMedicineModel.countDocuments(searchQuery)
+    ])
+
+      const totalPages = Math.ceil(count / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+       
+    return {
+      data,
+      totalCount:count,
+      page,
+      limit,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+    };
+
   }
 
   findOne(id: number) {

@@ -194,3 +194,8 @@ export class SearchShopProductDto {
   @IsEnum(SortBy)
   sortBy?: SortBy = SortBy.NAME_ASC;
 }
+
+
+
+
+

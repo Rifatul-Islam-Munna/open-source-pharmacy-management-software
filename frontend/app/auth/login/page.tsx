@@ -9,18 +9,40 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Mail, Lock } from "lucide-react";
 import { ViewTransition } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { loginUser } from "@/actions/custom-response";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
+  const { mutate, isPending: loading } = useMutation({
+    mutationKey: ["login"],
+    mutationFn: (data: { email: string; password: string }) =>
+      loginUser(data.email, data.password),
+    onSuccess: (data) => {
+      if (data?.data) {
+        toast.success("Login successful");
+        const user =
+          data?.data?.user?.type === "admin" ? "/admin" : "/dashboard";
+        router.push(user);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data?.error?.message);
+
+        return;
+      }
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    // Add your login logic here
-    setTimeout(() => setLoading(false), 2000);
+    mutate({ email, password });
   };
 
   return (
@@ -72,7 +94,6 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
               {/* Password Field */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -105,25 +126,7 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
               {/* Remember Me */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) =>
-                    setRememberMe(checked as boolean)
-                  }
-                  className="border-border-gray data-[state=checked]:bg-primary-blue data-[state=checked]:border-primary-blue"
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm text-dark-text cursor-pointer select-none"
-                >
-                  Remember me for 30 days
-                </label>
-              </div>
-
               {/* Submit Button */}
               <Button
                 type="submit"
@@ -133,51 +136,12 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign In"}
                 {!loading && <ArrowRight size={18} />}
               </Button>
-
               {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border-gray"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-light-gray text-dark-text opacity-75">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
               {/* Social Login */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 border border-border-gray bg-white dark:bg-primary-background hover:bg-light-gray dark:hover:bg-light-gray text-dark-text"
-                >
-                  Google
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 border border-border-gray bg-white dark:bg-primary-background hover:bg-light-gray dark:hover:bg-light-gray text-dark-text"
-                >
-                  Microsoft
-                </Button>
-              </div>
             </form>
           </Card>
 
           {/* Sign Up Link */}
-          <div className="text-center mt-6">
-            <p className="text-dark-text opacity-75">
-              Don't have an account?{" "}
-              <Link
-                href="/auth/signup"
-                className="text-primary-blue font-semibold hover:text-dark-blue transition"
-              >
-                Create one now
-              </Link>
-            </p>
-          </div>
 
           {/* Support Link */}
           <div className="text-center mt-6">

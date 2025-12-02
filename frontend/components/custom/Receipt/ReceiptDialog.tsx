@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 import { Sale, SaleItem } from "@/stores/sales-store";
+import { useReactToPrint } from "react-to-print";
 // adjust path
 
 interface ReceiptDialogProps {
@@ -82,7 +83,7 @@ export default function ReceiptDialog({
     const imgData = canvas.toDataURL("image/jpeg", 0.98);
 
     // Wider thermal receipt: 80mm (instead of 58mm)
-    const imgWidth = 115; // 80mm width for better standard
+    const imgWidth = 80; // 80mm width for better standard
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     const margin = 2;
@@ -107,9 +108,17 @@ export default function ReceiptDialog({
     pdf.save(`receipt-${invoiceNo}.pdf`);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = useReactToPrint({
+    contentRef: receiptRef,
+    pageStyle: `
+        @page { size: 80mm ${receiptRef?.current?.scrollHeight}; margin: 0; padding:10px }
+      #receipt { padding: 0; margin:  0; }
+      #receipt * {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      `,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -305,77 +314,6 @@ export default function ReceiptDialog({
             🖨️ Print Now
           </Button>
         </div>
-        <style jsx global>{`
-          /* Updated for wider layout */
-          .w-6 {
-            width: 1.5rem;
-          }
-          .w-8 {
-            width: 2rem;
-          }
-          .w-10 {
-            width: 2.5rem;
-          }
-          .w-12 {
-            width: 3rem;
-          }
-          .w-14 {
-            width: 3.5rem;
-          }
-
-          .min-w-0 {
-            min-width: 0;
-          }
-
-          .text-lg {
-            font-size: 1.125rem;
-            line-height: 1.75rem;
-          }
-          .text-base {
-            font-size: 1rem;
-            line-height: 1.5rem;
-          }
-          .text-sm {
-            font-size: 0.875rem;
-            line-height: 1.25rem;
-          }
-          .text-[9px] {
-            font-size: 9px;
-          }
-          .text-[10px] {
-            font-size: 10px;
-          }
-
-          /* Print Styles - Updated for 80mm width */
-          @media print {
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-
-            body * {
-              visibility: hidden;
-            }
-
-            #receipt,
-            #receipt * {
-              visibility: visible;
-            }
-
-            #receipt {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 80mm;
-              padding: 2mm;
-              font-family: "Courier New", monospace;
-            }
-
-            .print\\:hidden {
-              display: none !important;
-            }
-          }
-        `}</style>
       </DialogContent>
     </Dialog>
   );

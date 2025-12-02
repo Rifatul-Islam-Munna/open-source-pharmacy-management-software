@@ -7,8 +7,11 @@ import { Request } from 'express';
 export type jwts= {
     email:string,
     id:string,
-    type:string,
+    role:string,
     slug:string,
+    shopName:string,
+    location:string,
+    mobileNumber:string
   
 }
 export interface ExpressRequest extends Request {
@@ -48,8 +51,9 @@ export class AuthGuard implements CanActivate {
            if (!decoded) {
             throw new Error('Token verification returned no payload');
         }
+        this.logger.log("decoded->",decoded)
 
-        if (!decoded.email || !decoded.id || !decoded.type) {
+        if (!decoded.email || !decoded.id || !decoded.role || !decoded.slug ) {
             throw new Error('Incomplete JWT payload');
         }
           request.user = decoded;

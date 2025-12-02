@@ -2,9 +2,11 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { CreateShopDto, SearchShopProductDto, StockStatus } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { TenantConnectionService } from 'src/tenant-connection/tenant-connection.service';
-import { ShopStockBatch, ShopStockBatchSchema } from './entities/shop.schema';
+import { ShopStockBatch, ShopStockBatchDocument, ShopStockBatchSchema } from './entities/shop.schema';
 import { Medicine, MedicineSchema } from 'src/medicine/entities/medicine.schema';
 import { Model, Types } from 'mongoose';
+import { AlertType, GetAlertsQueryDto, SortBy } from './dto/get-alerts-query.dto';
+import { AlertItemDto, GetAlertsResponseDto } from './dto/alert-response.dto';
 
 
 @Injectable()
@@ -110,6 +112,209 @@ export class ShopService {
     },
   };
 }
+
+
+async getAlert(query:GetAlertsQueryDto): Promise<GetAlertsResponseDto> {
+  const shopStockBatchModel = this.tenantConnectionService.getModel<ShopStockBatchDocument>(
+    "test-pharma-user-location-1",
+    ShopStockBatch.name,
+    ShopStockBatchSchema
+  );
+
+  const {
+    filterType,
+    sortBy = SortBy.URGENCY,
+    page = 1,
+    itemsPerPage = 8,
+    searchQuery,
+    expiryDaysThreshold,
+    lowStockThreshold,
+  } = query;
+
+  const alerts: AlertItemDto[] = [];
+
+  // Calculate expiry threshold date
+  const expiryThresholdDate = new Date();
+  expiryThresholdDate.setDate(
+    expiryThresholdDate.getDate() + (expiryDaysThreshold ?? 10),
+  );
+
+  // ===== EXPIRING ALERTS =====
+  if (filterType === AlertType.ALL || filterType === AlertType.EXPIRING) {
+    const expiringPipeline: any[] = [
+      {
+        $match: {
+          expiryDate: {
+            $lte: expiryThresholdDate,
+            $gte: new Date(),
+          },
+        },
+      },
+    ];
+
+    // Add search filter if provided
+    if (searchQuery) {
+      expiringPipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: searchQuery, $options: 'i' } },
+            { batchNumber: { $regex: searchQuery, $options: 'i' } },
+          ],
+        },
+      });
+    }
+
+    expiringPipeline.push(
+      {
+        $addFields: {
+          daysUntilExpiry: {
+            $ceil: {
+              $divide: [
+                { $subtract: ['$expiryDate', new Date()] },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          batchNumber: 1,
+          expiryDate: 1,
+          daysUntilExpiry: 1,
+          shopMedicineId: 1,
+        },
+      },
+    );
+
+    const expiringBatches = await shopStockBatchModel.aggregate(
+      expiringPipeline,
+    );
+
+    alerts.push(
+      ...expiringBatches.map((batch) => ({
+        id: batch._id.toString(),
+        name: batch.name,
+        batchName: batch.batchNumber,
+        type: 'expiring' as const,
+        expiryDate: batch.expiryDate,
+        currentStock: null,  // matches DTO
+        threshold: null,
+        daysUntilExpiry: batch.daysUntilExpiry,
+        shopMedicineId: batch.shopMedicineId.toString(),
+      })),
+    );
+  }
+
+  // ===== LOW STOCK ALERTS =====
+  if (filterType === AlertType.ALL || filterType === AlertType.LOW_STOCK) {
+    const lowStockPipeline: any[] = [];
+
+    // Add search filter if provided
+    if (searchQuery) {
+      lowStockPipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: searchQuery, $options: 'i' } },
+            { batchNumber: { $regex: searchQuery, $options: 'i' } },
+          ],
+        },
+      });
+    }
+
+    // Group by shopMedicineId to get total stock per medicine
+    lowStockPipeline.push(
+      {
+        $group: {
+          _id: '$shopMedicineId',
+          name: { $first: '$name' },
+          batchNumber: { $first: '$batchNumber' },
+          totalStock: { $sum: '$totalUnits' },
+          batches: {
+            $push: {
+              batchId: '$_id',
+              batchNumber: '$batchNumber',
+              units: '$totalUnits',
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          totalStock: { $lte: lowStockThreshold },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          batchNumber: 1,
+          totalStock: 1,
+          shopMedicineId: '$_id',
+        },
+      },
+    );
+
+    const lowStockItems = await shopStockBatchModel.aggregate(
+      lowStockPipeline,
+    );
+
+    alerts.push(
+      ...lowStockItems.map((item) => ({
+        id: item._id.toString(),
+        name: item.name,
+        batchName: item.batchNumber,
+        type: 'low-stock' as const,
+        expiryDate: null,        // matches DTO
+        currentStock: item.totalStock,
+        threshold: lowStockThreshold,
+        daysUntilExpiry: null,
+        shopMedicineId: item.shopMedicineId.toString(),
+      })),
+    );
+  }
+
+  // ===== SORTING =====
+  this.sortAlerts(alerts, sortBy);
+
+  // ===== PAGINATION =====
+  const total = alerts.length;
+  const totalPages = Math.ceil(total / itemsPerPage);
+  const startIndex = (page - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAlerts = alerts.slice(startIndex, endIndex);
+
+  return {
+    data: paginatedAlerts,
+    total,
+    page,
+    itemsPerPage,
+    totalPages,
+  };
+}
+
+  private sortAlerts(alerts: AlertItemDto[], sortBy: SortBy): void {
+    alerts.sort((a, b) => {
+      switch (sortBy) {
+        case SortBy.URGENCY:
+          return (a.daysUntilExpiry || 999) - (b.daysUntilExpiry || 999);
+        case SortBy.NAME_ASC:
+          return a.name.localeCompare(b.name);
+        case SortBy.NAME_DESC:
+          return b.name.localeCompare(a.name);
+        case SortBy.STOCK_ASC:
+          return (a.currentStock || 999) - (b.currentStock || 999);
+        case SortBy.STOCK_DESC:
+          return (b.currentStock || 999) - (a.currentStock || 999);
+        default:
+          return 0;
+      }
+    });
+  }
+
+
 
 
 

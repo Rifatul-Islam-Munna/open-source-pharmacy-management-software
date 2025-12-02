@@ -130,8 +130,9 @@ export default function SellMedicinePage() {
       invoiceId: generateInvoice(),
     };
     SetSales(payload);
-    mutate(payload);
+    /*  mutate(payload); */
     console.log("Saving sale:", generateInvoice());
+    setOpen(true);
 
     // Here you would save to backend
     /*     console.log("Saving sale:", currentSale);

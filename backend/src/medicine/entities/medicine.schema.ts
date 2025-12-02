@@ -8,6 +8,7 @@ export type MedicineDocument = HydratedDocument<Medicine>;
    Syrup = 'Syrup',
    Capsule = 'Capsule',
    Injection = 'Injection',
+   Other = 'Other',
  }
 @Schema({timestamps:true,autoIndex:true})
 

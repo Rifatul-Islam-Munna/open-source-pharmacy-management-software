@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { MedicineService } from './medicine.service';
-import { CreateMedicineDto, getAllMedicineDto } from './dto/create-medicine.dto';
+import { CreateMedicineDto, getAllMedicineDto, PaginationDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 
 @Controller('medicine')
@@ -15,6 +15,10 @@ export class MedicineController {
   @Get()
   findAll(@Query() query:getAllMedicineDto) {
     return this.medicineService.findAll(query);
+  }
+  @Get('get-all-with-pagination')
+  findAllWithPagination(@Query() query:PaginationDto) {
+    return this.medicineService.findWithPagination(query);
   }
 
   @Get(':id')

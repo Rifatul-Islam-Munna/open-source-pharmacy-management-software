@@ -13,18 +13,34 @@ export class CreateUserDto {
 
   @ApiProperty({ example: 'John Doe' })
   @IsString()
+  @IsOptional()
   ownerName: string;
 
   @ApiProperty({ example: 'HealthPlus Pharmacy' })
   @IsString()
+  @IsOptional()
   shopName: string;
+
+
+  @ApiProperty({ example: 'wroker name' })
+  @IsString()
+  @IsOptional()
+  workerName: string;
+ 
+
+  @ApiProperty({ example: 'HealthPlus Pharmacy' })
+  @IsString()
+  @IsOptional()
+  mobileNumber: string;
 
   @ApiProperty({ example: 'Dhaka, Bangladesh' })
   @IsString()
+  @IsOptional()
   location: string;
 
   @ApiProperty({ example: 'owner@example.com' })
   @IsEmail()
+  @IsOptional()
   email: string;
 
   @ApiProperty({ example: 'securepassword123' })

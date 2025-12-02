@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { PartialType } from '@nestjs/mapped-types';
 import { DosageType } from '../entities/medicine.schema';
+import { Transform } from 'class-transformer';
 
 export class CreateMedicineDto {
   @ApiPropertyOptional({ example: 'Napa' })
@@ -52,5 +53,38 @@ export class getAllMedicineDto{
   @IsOptional()
   @IsString()
   name?: string;
+}
+export class PaginationDto {
+  @ApiPropertyOptional({
+    description: 'Search by medicine name',
+    example: 'Napa',
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Page number',
+    example: 1,
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => parseInt(value))
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({
+    description: 'Items per page',
+    example: 10,
+    minimum: 1,
+    maximum: 100,
+  })
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => parseInt(value))
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
 }
 

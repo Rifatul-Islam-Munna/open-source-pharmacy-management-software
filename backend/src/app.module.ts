@@ -11,6 +11,7 @@ import { UserModule } from './user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ShopModule } from './shop/shop.module';
 import { SellsModule } from './sells/sells.module';
+import { PurchaseOrderModule } from './purchase-order/purchase-order.module';
 
 @Module({
   imports: [    ConfigModule.forRoot({
@@ -31,7 +32,7 @@ import { SellsModule } from './sells/sells.module';
         return connection;
       },
     })
-   , MedicineModule, TenantConnectionModule, UserModule, ShopModule, SellsModule],
+   , MedicineModule, TenantConnectionModule, UserModule, ShopModule, SellsModule, PurchaseOrderModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -152,6 +152,7 @@ export const GetRequestNormal = async <T>(url: string,revalidate=0 ,revalidateTa
     }
 }
 
+
 export const DeleteRequestAxios = async <T>(url: string): 
   Promise<[T | null, { message: string; statusCode: number } | null]> => {
     

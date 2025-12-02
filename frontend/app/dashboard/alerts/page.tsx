@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ViewTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -29,102 +29,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Demo data
-const demoAlerts = [
-  {
-    id: "1",
-    name: "Aspirin 81mg",
-    batchName: "BATCH2024-001",
-    type: "expiring",
-    expiryDate: new Date("2024-12-24"),
-    currentStock: null,
-    threshold: null,
-    daysUntilExpiry: 7,
-  },
-  {
-    id: "2",
-    name: "Amoxicillin 500mg",
-    batchName: "BATCH2024-045",
-    type: "low-stock",
-    expiryDate: null,
-    currentStock: 12,
-    threshold: 15,
-    daysUntilExpiry: null,
-  },
-  {
-    id: "3",
-    name: "Ibuprofen 200mg",
-    batchName: "BATCH2024-032",
-    type: "expiring",
-    expiryDate: new Date("2024-12-24"),
-    currentStock: null,
-    threshold: null,
-    daysUntilExpiry: 7,
-  },
-  {
-    id: "4",
-    name: "Metformin 1000mg",
-    batchName: "BATCH2024-078",
-    type: "low-stock",
-    expiryDate: null,
-    currentStock: 10,
-    threshold: 10,
-    daysUntilExpiry: null,
-  },
-  {
-    id: "5",
-    name: "Cetirizine 10mg",
-    batchName: "BATCH2024-019",
-    type: "expiring",
-    expiryDate: new Date("2024-12-28"),
-    currentStock: null,
-    threshold: null,
-    daysUntilExpiry: 11,
-  },
-  {
-    id: "6",
-    name: "Paracetamol 500mg",
-    batchName: "BATCH2024-056",
-    type: "low-stock",
-    expiryDate: null,
-    currentStock: 8,
-    threshold: 12,
-    daysUntilExpiry: null,
-  },
-  {
-    id: "7",
-    name: "Omeprazole 20mg",
-    batchName: "BATCH2024-063",
-    type: "expiring",
-    expiryDate: new Date("2025-01-05"),
-    currentStock: null,
-    threshold: null,
-    daysUntilExpiry: 20,
-  },
-  {
-    id: "8",
-    name: "Aspirin 800mg",
-    batchName: "BATCH2024-091",
-    type: "low-stock",
-    expiryDate: null,
-    currentStock: 5,
-    threshold: 12,
-    daysUntilExpiry: null,
-  },
-];
+import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
+import { AlertItem, AlertsResponse } from "@/@types/alerts";
 
 export default function AlertsPage() {
   const router = useRouter();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState("urgency");
-  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState<
+    "urgency" | "name-asc" | "name-desc" | "stock-asc" | "stock-desc"
+  >("urgency");
+  const [filterType, setFilterType] = useState<
+    "all" | "low-stock" | "expiring"
+  >("all");
 
-  // Format date
-  const formatDate = (date: Date) => {
+  // New thresholds
+  const [expiryDaysThreshold, setExpiryDaysThreshold] = useState(90);
+  const [lowStockThreshold, setLowStockThreshold] = useState(15);
+
+  const params = new URLSearchParams();
+  params.set("page", currentPage.toString());
+  params.set("itemsPerPage", itemsPerPage.toString());
+  params.set("sortBy", sortBy);
+  params.set("filterType", filterType);
+  params.set("expiryDaysThreshold", expiryDaysThreshold.toString());
+  params.set("lowStockThreshold", lowStockThreshold.toString());
+  if (searchQuery.trim()) params.set("searchQuery", searchQuery.trim());
+
+  const { data, isPending } = useQueryWrapper<AlertsResponse>(
+    [
+      "get-my-alerts",
+      currentPage,
+      itemsPerPage,
+      sortBy,
+      filterType,
+      searchQuery,
+      expiryDaysThreshold,
+      lowStockThreshold,
+    ],
+    `/shop/get-my-alerts?${params.toString()}`
+  );
+
+  const alerts: AlertItem[] = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
+
+  const formatDate = (iso: string) => {
+    const date = new Date(iso);
     const options: Intl.DateTimeFormatOptions = {
       day: "numeric",
       month: "long",
@@ -133,75 +87,30 @@ export default function AlertsPage() {
     return date.toLocaleDateString("en-US", options);
   };
 
-  // Filter alerts
-  let filteredAlerts = demoAlerts.filter((alert) => {
-    const matchesSearch =
-      alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.batchName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || alert.type === filterType;
-    return matchesSearch && matchesType;
-  });
-
-  // Sort alerts
-  filteredAlerts.sort((a, b) => {
-    switch (sortBy) {
-      case "urgency":
-        return (a.daysUntilExpiry || 999) - (b.daysUntilExpiry || 999);
-      case "name-asc":
-        return a.name.localeCompare(b.name);
-      case "name-desc":
-        return b.name.localeCompare(a.name);
-      case "stock-asc":
-        return (a.currentStock || 999) - (b.currentStock || 999);
-      case "stock-desc":
-        return (b.currentStock || 999) - (a.currentStock || 999);
-      default:
-        return 0;
-    }
-  });
-
-  const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
-
-  // Paginate
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedAlerts = filteredAlerts.slice(startIndex, endIndex);
-
-  // Generate page numbers
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: (number | "...")[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
     } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push("...");
-        pages.push(currentPage - 1);
-        pages.push(currentPage);
-        pages.push(currentPage + 1);
-        pages.push("...");
-        pages.push(totalPages);
-      }
+      pages.push(1, "...");
+      pages.push(currentPage - 1, currentPage, currentPage + 1);
+      pages.push("...", totalPages);
     }
 
     return pages;
   };
+
+  const skeletonCards = Array.from({ length: itemsPerPage });
 
   return (
     <div className="space-y-3">
@@ -213,7 +122,7 @@ export default function AlertsPage() {
         </p>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search, Filters, Thresholds */}
       <div className="px-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-md">
@@ -221,7 +130,10 @@ export default function AlertsPage() {
             <Input
               placeholder="Search by name or ID..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-9 h-9 border-border-gray focus:border-primary-blue shadow-none text-sm"
             />
           </div>
@@ -231,7 +143,10 @@ export default function AlertsPage() {
             <Button
               variant={filterType === "all" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setFilterType("all")}
+              onClick={() => {
+                setFilterType("all");
+                setCurrentPage(1);
+              }}
               className={`h-8 text-xs px-3 ${
                 filterType === "all"
                   ? "bg-primary-blue text-white hover:bg-primary-blue"
@@ -243,7 +158,10 @@ export default function AlertsPage() {
             <Button
               variant={filterType === "low-stock" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setFilterType("low-stock")}
+              onClick={() => {
+                setFilterType("low-stock");
+                setCurrentPage(1);
+              }}
               className={`h-8 text-xs px-3 ${
                 filterType === "low-stock"
                   ? "bg-primary-blue text-white hover:bg-primary-blue"
@@ -255,7 +173,10 @@ export default function AlertsPage() {
             <Button
               variant={filterType === "expiring" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setFilterType("expiring")}
+              onClick={() => {
+                setFilterType("expiring");
+                setCurrentPage(1);
+              }}
               className={`h-8 text-xs px-3 ${
                 filterType === "expiring"
                   ? "bg-primary-blue text-white hover:bg-primary-blue"
@@ -286,7 +207,13 @@ export default function AlertsPage() {
                 <h4 className="font-semibold text-sm text-dark-blue">
                   Sort By
                 </h4>
-                <RadioGroup value={sortBy} onValueChange={setSortBy}>
+                <RadioGroup
+                  value={sortBy}
+                  onValueChange={(value) => {
+                    setSortBy(value as typeof sortBy);
+                    setCurrentPage(1);
+                  }}
+                >
                   <div className="space-y-2">
                     {[
                       { value: "urgency", label: "Urgency" },
@@ -325,13 +252,74 @@ export default function AlertsPage() {
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* Threshold controls */}
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-dark-text">Expiring within</span>
+            <Input
+              type="number"
+              min={1}
+              className="h-8 w-20 text-xs border-border-gray shadow-none"
+              value={expiryDaysThreshold}
+              onChange={(e) => {
+                const val = Number(e.target.value) || 0;
+                setExpiryDaysThreshold(val);
+                setCurrentPage(1);
+              }}
+            />
+            <span className="text-xs text-dark-text">days</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-dark-text">Low stock below</span>
+            <Input
+              type="number"
+              min={1}
+              className="h-8 w-20 text-xs border-border-gray shadow-none"
+              value={lowStockThreshold}
+              onChange={(e) => {
+                const val = Number(e.target.value) || 0;
+                setLowStockThreshold(val);
+                setCurrentPage(1);
+              }}
+            />
+            <span className="text-xs text-dark-text">units</span>
+          </div>
+        </div>
       </div>
 
-      {/* Alert Cards Grid - 4 columns */}
+      {/* Alert Cards Grid */}
       <div className="px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-          {paginatedAlerts.length > 0 ? (
-            paginatedAlerts.map((alert) => (
+          {isPending ? (
+            skeletonCards.map((_, idx) => (
+              <Card
+                key={`skeleton-${idx}`}
+                className="shadow-none border-border-gray overflow-hidden"
+              >
+                <div className="h-0.5 bg-gray-200" />
+                <CardContent className="p-2.5 space-y-2 animate-pulse">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="h-3 w-24 bg-gray-200 rounded" />
+                      <div className="h-2 w-20 bg-gray-200 rounded" />
+                    </div>
+                    <div className="h-4 w-10 bg-gray-200 rounded-full" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="h-3 w-28 bg-gray-200 rounded" />
+                    <div className="h-2 w-20 bg-gray-200 rounded ml-4" />
+                  </div>
+                  <div className="flex gap-1.5 pt-0.5">
+                    <div className="flex-1 h-7 bg-gray-200 rounded" />
+                    <div className="h-7 w-7 bg-gray-200 rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : alerts.length > 0 ? (
+            alerts.map((alert) => (
               <Card
                 key={alert.id}
                 className="shadow-none border-border-gray hover:border-primary-blue transition-colors overflow-hidden"
@@ -370,9 +358,11 @@ export default function AlertsPage() {
                           {alert.daysUntilExpiry} days left
                         </span>
                       </div>
-                      <p className="text-[10px] text-dark-text/60 pl-[18px]">
-                        {formatDate(alert.expiryDate!)}
-                      </p>
+                      {alert.expiryDate && (
+                        <p className="text-[10px] text-dark-text/60 pl-[18px]">
+                          {formatDate(alert.expiryDate)}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-0.5">
@@ -494,9 +484,9 @@ export default function AlertsPage() {
           </div>
         </div>
         <p className="text-center text-sm text-dark-text mt-3">
-          Showing {startIndex + 1} to{" "}
-          {Math.min(endIndex, filteredAlerts.length)} of {filteredAlerts.length}{" "}
-          alerts
+          Showing {data?.data?.length} to{" "}
+          {Math.min(currentPage * itemsPerPage + itemsPerPage, total)} of{" "}
+          {totalPages} alerts
         </p>
       </div>
     </div>

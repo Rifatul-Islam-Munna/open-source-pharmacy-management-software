@@ -3,6 +3,7 @@ import { ShopService } from './shop.service';
 import { CreateShopDto, SearchShopProductDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { DeleteDto } from 'lib/pagination.dto';
+import { GetAlertsQueryDto } from './dto/get-alerts-query.dto';
 
 @Controller('shop')
 export class ShopController {
@@ -16,6 +17,10 @@ export class ShopController {
   @Get()
   findAll(@Query() query: SearchShopProductDto) {
     return this.shopService.findAll(query);
+  }
+  @Get('get-my-alerts')
+  getAllMyAlerts(@Query() query:GetAlertsQueryDto) {
+    return this.shopService.getAlert(query);
   }
 
   @Get(':id')

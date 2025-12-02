@@ -1,7 +1,10 @@
 "use client";
 
+import { userInfo } from "@/@types/user";
+import { getUser } from "@/actions/custom-response";
 import { ModeToggle } from "@/components/custom/themeing/Theme-Button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   Zap,
@@ -13,8 +16,25 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [user, setUser] = useState<userInfo | null>();
+  const pathName = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const getuserInfo = async () => {
+      const user = await getUser();
+      setUser(user);
+    };
+    getuserInfo();
+  }, [pathName]);
+  const handelPushToDashboard = () => {
+    const path = user?.role === "admin" ? "/admin" : "/dashboard";
+    router.push(path);
+  };
   return (
     <div className="w-full" style={{ backgroundColor: "var(--color-white)" }}>
       {/* Header */}
@@ -85,31 +105,27 @@ export default function Home() {
             <AnimatedThemeToggler />
 
             <div className="flex items-center gap-3">
-              <button
-                className="text-sm font-medium transition"
-                style={{ color: "var(--color-dark-text)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = "var(--color-primary-blue)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "var(--color-dark-text)")
-                }
-              >
-                <Link href={"/auth/login"}>Login</Link>
-              </button>
-              <button
-                className="px-4 py-2 text-white text-sm font-semibold rounded-lg transition"
-                style={{ backgroundColor: "var(--color-primary-blue)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#1a7bc2")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--color-primary-blue)")
-                }
-              >
-                <Link href={"/auth/signup"}>Sign Up</Link>
-              </button>
+              {user ? (
+                <Button
+                  onClick={handelPushToDashboard}
+                  className="  bg-primary-blue"
+                >
+                  Dashboard
+                </Button>
+              ) : (
+                <button
+                  className="text-sm font-medium transition"
+                  style={{ color: "var(--color-dark-text)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--color-primary-blue)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--color-dark-text)")
+                  }
+                >
+                  <Link href={"/auth/login"}>Login</Link>
+                </button>
+              )}
             </div>
           </div>
         </div>

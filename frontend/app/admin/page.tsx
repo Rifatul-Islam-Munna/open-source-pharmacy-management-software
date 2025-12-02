@@ -49,7 +49,10 @@ const MedicinesPage = () => {
 
   const { data, isLoading, error } = useQueryWrapper<PaginationResponse>(
     ["medicines", searchParams.page, searchParams.limit, text],
-    `/medicine/get-all-with-pagination?name=${text}&page=${searchParams.page}&limit=${searchParams.limit}`
+    `/medicine/get-all-with-pagination?name=${text}&page=${searchParams.page}&limit=${searchParams.limit}`,
+    {},
+    1000,
+    "all-medicines"
   );
 
   const handleSearch = (e: React.FormEvent) => {

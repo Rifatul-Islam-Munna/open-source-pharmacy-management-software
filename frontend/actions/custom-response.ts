@@ -3,6 +3,7 @@
 import { LoginResponse } from "@/@types/user";
 import { PostRequestAxios } from "@/api-hooks/api-hook";
 import { cookies } from "next/headers";
+import { userInfo } from "@/@types/user";
 
 export const loginUser = async (email:string,password:string)=>{
 
@@ -33,4 +34,15 @@ export const loginUser = async (email:string,password:string)=>{
     }
  
     return {data,error}
+}
+
+export const getUser = async () =>{
+     const coookies = await cookies()
+     const userInfo = coookies.get("user_info")?.value
+     if(!userInfo){
+        return null
+     }
+    const parserUser = JSON.parse(userInfo) as userInfo
+    return parserUser
+    
 }

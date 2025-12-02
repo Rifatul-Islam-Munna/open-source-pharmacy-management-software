@@ -21,3 +21,13 @@ export interface LoginResponse {
   refresh_token: string;
   user: User;
 }
+export type userInfo =  {
+    id: string;
+    email: string;
+    role: string;
+    name: string | undefined;
+    location: string;
+    shopName: string;
+    phone: string;
+    slug: string;
+}

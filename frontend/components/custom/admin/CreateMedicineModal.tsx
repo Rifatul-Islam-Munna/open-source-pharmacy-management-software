@@ -21,6 +21,7 @@ import {
 import { Plus, X, Loader2 } from "lucide-react";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { useQueryClient } from "@tanstack/react-query";
+import { revlidateGlobalMedicin } from "@/actions/Refresh-action";
 
 interface FormData {
   name: string;
@@ -83,8 +84,10 @@ export function CreateMedicineModal({
     url: "/medicine",
     successMessage: "Medicine added successfully",
 
-    onSuccess: () => {
+    onSuccess: async () => {
       setOpen(false);
+
+      await revlidateGlobalMedicin();
       queryClient.refetchQueries({ queryKey: ["medicines"], exact: false });
     },
   });

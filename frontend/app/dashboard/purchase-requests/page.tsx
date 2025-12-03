@@ -60,6 +60,8 @@ import { Medicine } from "@/@types/global-medicin";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { OrdersResponse } from "@/@types/purches-req";
 import { format, isValid, parseISO } from "date-fns";
+import Pagination from "@/components/custom/Pagination";
+import { getToken } from "@/api-hooks/api-hook";
 
 interface PurchaseOrder {
   id: string;
@@ -302,12 +304,13 @@ export default function PurchaseRequestsPage() {
 
   // CSV Download utility
   async function downloadCSV() {
+    const { access_token } = await getToken();
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
     try {
       const response = await fetch(`${API_URL}/purchase-order/download-csv`, {
         method: "GET",
         headers: {
-          // Add your auth headers if needed
+          access_token: access_token,
         },
       });
 
@@ -369,7 +372,7 @@ export default function PurchaseRequestsPage() {
 
       {/* Add Purchase Request Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-xl w-full">
+        <DialogContent className=" min-w-3xl w-full">
           <DialogHeader>
             <DialogTitle>Add Purchase Request</DialogTitle>
           </DialogHeader>
@@ -392,13 +395,13 @@ export default function PurchaseRequestsPage() {
                     variant="outline"
                     role="combobox"
                     aria-expanded={medicinePopoverOpen}
-                    className="w-[200px] justify-between"
+                    className=" max-w-3xl justify-between"
                   >
                     {selectedMedicine ? selectedMedicine : "Select medicine..."}
                     <ChevronsUpDown className="opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0">
+                <PopoverContent className=" w-2xl  p-0">
                   <Command>
                     <CommandInput
                       autoFocus
@@ -408,13 +411,13 @@ export default function PurchaseRequestsPage() {
                       onValueChange={setInputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                     />
-                    <CommandList>
+                    <CommandList className=" ">
                       <CommandEmpty>No medicine found.</CommandEmpty>
                       <CommandGroup>
                         {data?.map((med) => (
                           <CommandItem
                             key={med.name}
-                            value={med.name}
+                            value={`${med.name}-${med.dosageType}-${med.strength}-${med.generic}-${med.manufacturer}-`}
                             onSelect={(currentValue) => {
                               setSelectedMedicine(
                                 currentValue === selectedMedicine
@@ -429,6 +432,15 @@ export default function PurchaseRequestsPage() {
                             {med.name}-{" "}
                             <span className=" text-green-700">
                               ({med.dosageType})
+                            </span>
+                            <span className=" text-dark-blue">
+                              ({med.strength})
+                            </span>
+                            <span className=" text-green-70">
+                              ({med.generic})
+                            </span>
+                            <span className=" text-green-700">
+                              ({med.manufacturer})
                             </span>
                             <Check
                               className={cn(
@@ -756,47 +768,13 @@ export default function PurchaseRequestsPage() {
           <span className="text-sm text-dark-text select-none">per page</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1}
-            className="h-9 border-border-gray shadow-none"
-          >
-            Previous
-          </Button>
-          {[
-            ...Array.from(Array(OrderData?.totalPages).keys())
-              .slice(
-                Math.max(0, page - 2),
-                Math.min(OrderData?.totalPages ?? 1, page + 1)
-              )
-              .map((i) => (
-                <Button
-                  key={i + 1}
-                  size="sm"
-                  className={`h-8 w-8 rounded-full ${
-                    page === i + 1
-                      ? "bg-primary-blue text-white"
-                      : "border-border-gray text-dark-text"
-                  }`}
-                  variant={page === i + 1 ? "default" : "outline"}
-                  onClick={() => setPage(i + 1)}
-                  aria-label={`Go to page ${i + 1}`}
-                >
-                  {i + 1}
-                </Button>
-              )),
-          ]}
-          <Button
-            variant="outline"
-            onClick={() =>
-              setPage((p) => Math.min(p + 1, OrderData?.totalPages ?? 1))
-            }
-            disabled={page === (OrderData?.totalPages ?? 1)}
-            className="h-9 border-border-gray shadow-none"
-          >
-            Next
-          </Button>
+          <Pagination
+            currentPage={page}
+            totalPages={OrderData?.totalPages ?? 1}
+            hasNextPage={(OrderData?.totalPages ?? 1) > page}
+            hasPrevPage={page > 1}
+            onPageChange={setPage}
+          />
         </div>
       </div>
     </div>

@@ -65,7 +65,7 @@ export default function SellMedicinePage() {
 
   const [debouncedSearch] = useDebounce(searchQuery, 1000);
   const query = new URLSearchParams();
-  if (debouncedSearch?.length > 3) query.append("name", debouncedSearch);
+  if (debouncedSearch?.length > 3) query.append("searchQuery", debouncedSearch);
 
   const { data, isPending } = useQueryWrapper<MedicineResponse>(
     ["sells-medicines", debouncedSearch],
@@ -130,9 +130,8 @@ export default function SellMedicinePage() {
       invoiceId: generateInvoice(),
     };
     SetSales(payload);
-    /*  mutate(payload); */
+    mutate(payload);
     console.log("Saving sale:", generateInvoice());
-    setOpen(true);
 
     // Here you would save to backend
     /*     console.log("Saving sale:", currentSale);

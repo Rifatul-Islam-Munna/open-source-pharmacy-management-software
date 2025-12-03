@@ -63,7 +63,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!hasPrevPage}
-          className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center px-3 py-2 text-sm font-medium text-dark-text bg-white border border-border-gray  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeftIcon className="h-4 w-4 mr-1" />
           <span className=" hidden md:block">Previous</span>
@@ -75,7 +75,7 @@ export default function Pagination({
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="px-3 py-2 text-sm font-medium text-gray-400"
+                  className="px-3 py-2 text-sm font-medium text-dark-text"
                 >
                   ...
                 </span>
@@ -88,8 +88,8 @@ export default function Pagination({
                 onClick={() => onPageChange(page as number)}
                 className={`px-3 py-2 text-sm font-medium rounded-md border transition-colors ${
                   currentPage === page
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? "bg-dark-blue text-white border-primary-blue"
+                    : "bg-white text-dark-text border-border-gray "
                 }`}
               >
                 {page}
@@ -101,7 +101,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!hasNextPage}
-          className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center px-3 py-2 text-sm font-medium text-dark-text bg-white border border-border-gray  rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {" "}
           <span className=" hidden md:block"> Next</span>

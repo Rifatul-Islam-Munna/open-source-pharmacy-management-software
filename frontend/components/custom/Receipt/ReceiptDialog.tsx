@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 import { Sale, SaleItem } from "@/stores/sales-store";
 import { useReactToPrint } from "react-to-print";
+import { useUser } from "@/hooks/useUser";
 
 interface ReceiptDialogProps {
   open: boolean;
@@ -54,6 +55,7 @@ export default function ReceiptDialog({
   const total = sale?.total ?? subTotal;
   const paidAmount = sale?.paidAmount ?? 0;
   const dueAmount = total - paidAmount;
+  const { user, loading, error, refetch } = useUser();
 
   const paymentMethod =
     sale?.paymentType === "online"
@@ -145,13 +147,13 @@ export default function ReceiptDialog({
             {/* Header - Font A (12pt) */}
             <div className="text-center border-b border-black pb-1 mb-1">
               <h2 className="text-[11pt] font-bold m-0 leading-tight">
-                Haque Pharmacy
+                {user?.shopName ?? "N/A"}
               </h2>
               <p className="text-[8pt] m-0 leading-tight">
-                Kazi Nazrul Islam Road, Jhawtola Bogura-5800
+                {user?.location ?? "N/A"}
               </p>
               <p className="text-[8pt] m-0 leading-tight">
-                Mobile No: 01713-991175
+                Mobile No: {user?.phone ?? "N/A"}
               </p>
             </div>
 

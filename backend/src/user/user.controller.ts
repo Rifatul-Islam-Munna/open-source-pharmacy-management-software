@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto, LoginUserDto } from './dto/create-user.dto';
+import { CreateUserDto, LoginUserDto, ResetPassword } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from 'lib/pagination.dto';
 import { AuthGuard, type  ExpressRequest } from 'src/auth/auth.guard';
@@ -37,9 +37,11 @@ export class UserController {
 
  
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  @Patch('update-user')
+  @UseGuards(AuthGuard,RolesGuard)
+
+  update( @Body() updateUserDto: ResetPassword,@Req() req:ExpressRequest) {
+    return this.userService.resetPassword( updateUserDto,req.user);
   }
 
   @Delete(':id')

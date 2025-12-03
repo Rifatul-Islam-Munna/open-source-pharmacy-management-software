@@ -522,10 +522,10 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>{getStockBadge(medicine?.totalUnits)}</TableCell>
                     <TableCell className="text-dark-text">
-                      ${medicine?.purchasePrice?.toFixed(2)}
+                      ৳{medicine?.purchasePrice?.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-dark-text">
-                      ${medicine?.sellingPrice?.toFixed(2)}
+                      ৳{medicine?.sellingPrice?.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-dark-text">
                       {medicine?.totalUnits}

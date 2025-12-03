@@ -1,3 +1,4 @@
+"use client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 import {
@@ -10,8 +11,11 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/custom/admin/AdminSideBar";
+import { usePathname } from "next/navigation";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const pathName = usePathname();
+  const lastPathName = pathName.split("/").pop();
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -23,6 +27,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink
+                  href="/"
+                  className="text-dark-text hover:text-primary-blue"
+                >
+                  Home
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
                   href="/dashboard"
                   className="text-dark-text hover:text-primary-blue"
                 >
@@ -32,7 +45,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbPage className="text-dark-blue font-medium ">
-                  Current Page
+                  {lastPathName?.split("-").join(" ")}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>

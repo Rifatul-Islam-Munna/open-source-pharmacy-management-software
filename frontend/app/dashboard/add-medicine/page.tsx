@@ -440,7 +440,7 @@ export default function AddMedicinePage() {
                     </Label>
                     <div className="relative mt-1.5">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-text text-sm">
-                        $
+                        ৳
                       </span>
                       <Input
                         id="purchase-price"
@@ -467,7 +467,7 @@ export default function AddMedicinePage() {
                     </Label>
                     <div className="relative mt-1.5">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-text text-sm">
-                        $
+                        ৳
                       </span>
                       <Input
                         id="selling-price"

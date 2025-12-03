@@ -3,12 +3,14 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { parseCSVAction } from "@/actions/parse-csv";
 import { Input } from "@/components/ui/input";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function CSVUpload() {
   const [medicines, setMedicines] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const handleUpload = async (formData: FormData) => {
     startTransition(async () => {
@@ -21,6 +23,7 @@ export function CSVUpload() {
           setError(result.error);
         } else {
           setMedicines(result.medicines);
+          queryClient.refetchQueries({ queryKey: ["medicines"], exact: false });
         }
       } catch (err) {
         console.error("Upload failed:", err);

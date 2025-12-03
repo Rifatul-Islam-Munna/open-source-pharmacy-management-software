@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -27,6 +27,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { useUser } from "@/hooks/useUser";
+import { logOut } from "@/actions/custom-response";
 
 const items = [
   {
@@ -70,15 +72,27 @@ const items = [
     url: "/dashboard/purchase-requests",
     icon: SquareStar,
   },
-  {
+  /* {
     title: "Settings",
     url: "/dashboard/settings",
+    icon: Settings,
+  }, */
+  {
+    title: "User Settings",
+    url: "/dashboard/user-settings",
     icon: Settings,
   },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, error, refetch } = useUser();
+  const handelLogout = async () => {
+    await logOut();
+    refetch();
+    router.push("/auth/login");
+  };
 
   return (
     <Sidebar>
@@ -90,8 +104,10 @@ export function AppSidebar() {
               <Package className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-dark-blue">MediCare</h2>
-              <p className="text-xs text-dark-text">Pharmacy System</p>
+              <h2 className="text-sm font-semibold text-dark-blue">
+                {user?.shopName}
+              </h2>
+              <p className="text-xs text-dark-text truncate">Pharmacy System</p>
             </div>
           </div>
           <AnimatedThemeToggler />
@@ -141,10 +157,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="hover:bg-light-gray hover:text-red-500 text-dark-text transition-colors px-4 py-3 h-auto"
-              onClick={() => {
-                // Add your logout logic here
-                console.log("Logging out...");
-              }}
+              onClick={handelLogout}
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">Logout</span>

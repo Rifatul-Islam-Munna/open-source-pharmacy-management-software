@@ -46,3 +46,10 @@ export const getUser = async () =>{
     return parserUser
     
 }
+
+export const logOut = async ()=>{
+    const coookies = await cookies()
+    coookies.delete("access_token")
+    coookies.delete("refresh_token")
+    coookies.delete("user_info")
+}

@@ -1,5 +1,5 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { CreateUserDto, LoginUserDto } from './dto/create-user.dto';
+import { CreateUserDto, LoginUserDto, ResetPassword } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -56,6 +56,7 @@ export class UserService {
       workerName:createUserDto.workerName,
       workerSlug:user.slug,
       slug:slug,
+      type:UserType.WORKER,
 
       password:passwordHash,
       shopId:user.id,
@@ -87,7 +88,7 @@ export class UserService {
     if(!isMatch){
       throw new HttpException('Invalid credentials', 400);
     }
-    const userSlug = user?.type === UserType.WORKER? user.workerSlug : user.slug
+    const userSlug = user?.type === UserType.WORKER || user?.type === UserType.USER ? user.workerSlug : user.slug
     const access_token = this.jwtService.sign({email:user.email,id:user._id,role:user.type,slug:userSlug,shopName:user.shopName,location:user.location,mobileNumber:user.mobileNumber},{expiresIn:"10d",secret:process.env.ACCESS_TOKEN});
     const refresh_token = this.jwtService.sign({email:user.email,id:user._id,role:user.type,slug:userSlug,shopName:user.shopName,location:user.location,mobileNumber:user.mobileNumber},{expiresIn:"30d",secret:process.env.REFRESH_TOKEN});
     return{
@@ -96,6 +97,25 @@ export class UserService {
       refresh_token,
       user:user
     }
+  }
+
+
+  async resetPassword(payload:ResetPassword,user:jwts){
+    const findUserModel = this.tenantConnectionService.getModel<UserDocument>(GLOBALDATABSE,User.name,UserSchema)
+    const findUser = await findUserModel.findOne({_id:user.id}).lean();
+    if(!findUser){
+      throw new HttpException('User not found', 400);
+    }
+    const isMatch = await bcrypt.compare(payload.oldPassword,findUser.password);
+    if(!isMatch){
+      throw new HttpException('Old password is incorrect', 400);
+    }
+    const passwordHash = await bcrypt.hash(payload.newPassword, 10);
+    const update = await findUserModel.updateOne({_id:user.id},{$set:{password:passwordHash}}).lean();
+    if(!update){
+      throw new HttpException('User not updated', 400);
+    }
+    return {message:'User password updated successfully',data:update}
   }
 
   async findAll(query: PaginationDto,userId:string) {

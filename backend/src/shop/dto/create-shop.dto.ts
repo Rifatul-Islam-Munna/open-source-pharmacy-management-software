@@ -23,24 +23,28 @@ export class ShopBatchQuantityDto {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   @Min(0)
+  @IsOptional()
   boxes: number;
 
   @ApiProperty({ example: 10, description: 'Cartons per box' })
   @IsNumber()
   @Transform(({ value }) => Number(value))
-  @Min(1)
+   @IsOptional()
+  @Min(0)
   cartonPerBox: number;
 
   @ApiProperty({ example: 10, description: 'Strips per carton' })
   @IsNumber()
   @Transform(({ value }) => Number(value))
-  @Min(1)
+   @IsOptional()
+  @Min(0)
   stripsPerCarton: number;
 
   @ApiProperty({ example: 10, description: 'Units per strip' })
   @IsNumber()
   @Transform(({ value }) => Number(value))
-  @Min(1)
+   @IsOptional()
+  @Min(0)
   unitsPerStrip: number;
 }
 export class CreateShopDto {
@@ -61,7 +65,7 @@ export class CreateShopDto {
   })
   @ValidateNested()
   @Type(() => ShopBatchQuantityDto)
-  @IsNotEmpty()
+  @IsOptional()
   quantity: ShopBatchQuantityDto;
 
   @ApiProperty({ example: '2026-04-15', description: 'Batch expiry date' })

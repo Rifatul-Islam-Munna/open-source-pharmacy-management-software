@@ -211,9 +211,12 @@ export default function ReceiptDialog({
                         className="border-b border-gray-300"
                       >
                         <td className="text-left px-0.5 py-0.5">{index + 1}</td>
-                        <td className="text-left px-0.5 py-0.5 text-[7pt] break-words">
+                        <td className="text-left px-0.5 py-0.5 text-[6pt] break-words">
                           {item.medicineName}{" "}
-                          <span className="font-bold">({item?.doesType})</span>
+                          <span className="font-semibold">
+                            ({item?.doesType})
+                          </span>
+                          <span className=" text-[4pt]">{item.strength}</span>
                         </td>
                         <td className="text-right px-0.5 py-0.5">
                           {item.price.toFixed(1)}
@@ -290,7 +293,7 @@ export default function ReceiptDialog({
                 <span className="text-[7pt]">────────────</span>
                 <span className="font-bold">{paymentMethod}</span>
               </div>
-              <div className="text-[8pt]">PC: {counter}</div>
+              {/*      <div className="text-[8pt]">PC: {counter}</div> */}
             </div>
 
             {/* Bengali Text */}

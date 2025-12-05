@@ -41,6 +41,7 @@ import ReceiptDialog from "@/components/custom/Receipt/ReceiptDialog";
 import { nanoid } from "nanoid";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { Spinner } from "@/components/ui/spinner";
+import { useUser } from "@/hooks/useUser";
 export default function SellMedicinePage() {
   const {
     currentSale,
@@ -71,6 +72,7 @@ export default function SellMedicinePage() {
     ["sells-medicines", debouncedSearch],
     `/shop?${query.toString()}`
   );
+  const { user } = useUser();
   const { mutate, isPending: isSaving } = useCommonMutationApi({
     url: "/sells/create-new-sales",
     method: "POST",
@@ -85,8 +87,8 @@ export default function SellMedicinePage() {
   });
   // Set default issued by on mount
   useEffect(() => {
-    setIssuedBy("Admin User"); // You can get this from auth context
-  }, [setIssuedBy]);
+    setIssuedBy(user?.name ?? "unknown"); // You can get this from auth context
+  }, [setIssuedBy, user?.name]);
 
   const handleAddMedicine = (medicine: Medicine) => {
     const payload = {
@@ -98,6 +100,7 @@ export default function SellMedicinePage() {
       batchId: medicine?.batchNumber || "",
       expiryDate: medicine.expiryDate,
       originalPrice: medicine?.purchasePrice || 0,
+      strength: medicine?.shopMedicineId?.strength || "",
     };
     addItem(payload);
     setSearchOpen(false);
@@ -132,12 +135,6 @@ export default function SellMedicinePage() {
     SetSales(payload);
     mutate(payload);
     console.log("Saving sale:", generateInvoice());
-
-    // Here you would save to backend
-    /*     console.log("Saving sale:", currentSale);
-    alert("Sale saved successfully!");
-    clearSale();
-    setDiscountInput(""); */
   };
 
   return (
@@ -712,7 +709,11 @@ export default function SellMedicinePage() {
 
               <Button
                 onClick={handleSaveSale}
-                disabled={currentSale.items.length === 0 || isSaving}
+                disabled={
+                  currentSale.items.length === 0 ||
+                  !currentSale.paymentType.trim() ||
+                  isSaving
+                }
                 className="w-full h-9 bg-success hover:bg-success/90 text-white shadow-none text-sm"
               >
                 {isSaving ? (

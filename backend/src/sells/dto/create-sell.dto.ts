@@ -117,6 +117,14 @@ export class CreateSaleItemDto {
   doesType?: string;
 
   @ApiPropertyOptional({ 
+    description: 'Dosage type (tablet, syrup, etc.)',
+    example: 'Tablet'
+  })
+  @IsOptional()
+  @IsString()
+  strength?: string;
+
+  @ApiPropertyOptional({ 
     description: 'Batch ID of the medicine',
     example: 'BATCH-2024-001'
   })

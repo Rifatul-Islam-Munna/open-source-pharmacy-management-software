@@ -152,7 +152,7 @@ export function MedicineDetailsModal({
                   <p className="text-sm text-dark-text">Purchase Price</p>
                 </div>
                 <p className="text-2xl font-bold text-dark-blue">
-                  ${medicine?.purchasePrice?.toFixed(2)}
+                  {medicine?.purchasePrice?.toFixed(2)}
                 </p>
               </div>
 
@@ -162,7 +162,7 @@ export function MedicineDetailsModal({
                   <p className="text-sm text-dark-text">Selling Price</p>
                 </div>
                 <p className="text-2xl font-bold text-dark-blue">
-                  ${medicine?.sellingPrice?.toFixed(2)}
+                  {medicine?.sellingPrice?.toFixed(2)}
                 </p>
               </div>
 

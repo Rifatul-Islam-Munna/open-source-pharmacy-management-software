@@ -15,6 +15,7 @@ export interface SaleItem {
   batchId?:string
   expiryDate?:string
   originalPrice?:number
+  strength?:string
 }
 
 export interface Sale {
@@ -49,6 +50,7 @@ interface SalesState {
     batchId?:string
     expiryDate?:string
     originalPrice?:number
+    strength?:string
   }) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
@@ -116,7 +118,8 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         doesType:medicine.doesType,
         expiryDate:medicine?.expiryDate,
         batchId:medicine?.batchId,
-        originalPrice:medicine.originalPrice
+        originalPrice:medicine.originalPrice,
+        strength:medicine.strength
       };
 
       set((state) => ({

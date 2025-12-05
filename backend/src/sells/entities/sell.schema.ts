@@ -41,6 +41,8 @@ export class SaleItem {
 
   @Prop()
   doesType?: string;
+  @Prop()
+  strength?: string;
 
   // Optional if you actually track batch/expiry per item
   @Prop()

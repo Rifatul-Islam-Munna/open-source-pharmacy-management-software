@@ -133,6 +133,7 @@ export default function SellMedicinePage() {
       invoiceId: generateInvoice(),
     };
     SetSales(payload);
+
     mutate(payload);
     console.log("Saving sale:", generateInvoice());
   };
@@ -393,9 +394,15 @@ export default function SellMedicinePage() {
                           item.itemDiscountValue > 0 && (
                             <span className="text-[10px] text-success font-medium whitespace-nowrap">
                               -৳
-                              {(
-                                item.price - (item.discountPrice || item.price)
-                              ).toFixed(2)}
+                              {/* Logic: If Fixed, show value directly. If %, calculate amount. */}
+                              {item.itemDiscountType === "fixed"
+                                ? item.itemDiscountValue.toFixed(2)
+                                : (
+                                    (item.price *
+                                      item.quantity *
+                                      item.itemDiscountValue) /
+                                    100
+                                  ).toFixed(2)}
                             </span>
                           )}
                       </div>

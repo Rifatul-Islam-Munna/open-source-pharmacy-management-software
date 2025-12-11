@@ -133,31 +133,38 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   },
 
   // NEW METHOD: Set discount for individual item
-  setItemDiscount: (itemId, type, value) => {
+setItemDiscount: (itemId, type, value) => {
     set((state) => ({
       currentSale: {
         ...state.currentSale,
         items: state.currentSale.items.map((item) => {
           if (item.id !== itemId) return item;
 
-          let discountPrice = item.price;
+          const totalLinePrice = item.price * item.quantity;
+          let newSubtotal = totalLinePrice;
+
           if (value > 0) {
             if (type === "percentage") {
-              discountPrice = item.price - (item.price * value) / 100;
+              // Percentage applies to the total amount
+              newSubtotal = totalLinePrice - (totalLinePrice * value) / 100;
             } else {
-              discountPrice = item.price - value;
+              // Fixed: Simply subtract the input value from the Total Line Price
+              // Example: 210 - 4 = 206
+              newSubtotal = totalLinePrice - value;
             }
-            discountPrice = Math.max(0, discountPrice);
+            newSubtotal = Math.max(0, newSubtotal);
           }
 
-          const effectiveUnitPrice = value > 0 ? discountPrice : item.price;
+          // We calculate the "effective unit price" just for internal tracking,
+          // but the math relies on the subtotal.
+          const effectiveUnitPrice = item.quantity > 0 ? newSubtotal / item.quantity : 0;
 
           return {
             ...item,
             itemDiscountType: type,
             itemDiscountValue: value,
-            discountPrice: value > 0 ? discountPrice : undefined,
-            subtotal: effectiveUnitPrice ,
+            discountPrice: value > 0 ? effectiveUnitPrice : undefined,
+            subtotal: newSubtotal,
           };
         }),
       },
@@ -165,7 +172,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     get().calculateTotals();
   },
 
-  updateQuantity: (itemId, quantity) => {
+   updateQuantity: (itemId, quantity) => {
     const { currentSale } = get();
     const item = currentSale.items.find((i) => i.id === itemId);
     if (!item) return;
@@ -183,15 +190,32 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         items: state.currentSale.items.map((it) => {
           if (it.id !== itemId) return it;
 
-          const effectiveUnitPrice =
-            it.discountPrice && it.discountPrice > 0
-              ? it.discountPrice
-              : it.price;
+          const totalLinePrice = it.price * clamped;
+          let newSubtotal = totalLinePrice;
+
+          // Re-apply existing discount rules
+          if (it.itemDiscountValue && it.itemDiscountValue > 0) {
+             if (it.itemDiscountType === "percentage") {
+                newSubtotal = totalLinePrice - (totalLinePrice * it.itemDiscountValue) / 100;
+             } else {
+                // Fixed: Subtract the same fixed amount (e.g. 4) from the new total
+                // If you want the discount to scale with quantity, you'd change logic here,
+                // but "Total Line Discount" usually implies a fixed override amount.
+                newSubtotal = totalLinePrice - it.itemDiscountValue;
+             }
+             newSubtotal = Math.max(0, newSubtotal);
+          } else if (it.discountPrice && !it.itemDiscountType) {
+             // Default inventory discount (per unit)
+             newSubtotal = it.discountPrice * clamped;
+          }
+
+          const effectiveUnitPrice = clamped > 0 ? newSubtotal / clamped : 0;
 
           return {
             ...it,
             quantity: clamped,
-            subtotal: effectiveUnitPrice * clamped,
+            subtotal: newSubtotal,
+            discountPrice: (it.itemDiscountValue || it.discountPrice) ? effectiveUnitPrice : undefined
           };
         }),
       },
@@ -275,22 +299,16 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     }));
   },
 
+ // 3. FIX: Total Discount = (Sum of Originals) - (Sum of Subtotals)
   calculateTotals: () => {
     const state = get();
+    const items = state.currentSale.items;
 
-    const subtotal = state.currentSale.items.reduce(
-      (sum, item) => sum + item.subtotal,
-      0
-    );
-
-    const itemsDiscount = state.currentSale.items.reduce((sum, item) => {
-      const effectiveUnitPrice =
-        item.discountPrice && item.discountPrice > 0
-          ? item.discountPrice
-          : item.price;
-      const perUnitDiscount = item.price - effectiveUnitPrice;
-      return sum + perUnitDiscount ;
-    }, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalOriginalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // The gap between Original Total and New Subtotal is the exact discount amount
+    const itemsDiscount = totalOriginalPrice - subtotal;
 
     let discountAmount = 0;
     if (state.currentSale.discountType === "percentage") {
@@ -307,13 +325,10 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         ...state.currentSale,
         subtotal,
         discountAmount,
-        itemsDiscount,
+        itemsDiscount, 
         totalDiscount,
         total,
-        paidAmount:
-          state.currentSale.paymentStatus === "paid"
-            ? total
-            : state.currentSale.paidAmount,
+        paidAmount: state.currentSale.paymentStatus === "paid" ? total : state.currentSale.paidAmount,
       },
     }));
   },

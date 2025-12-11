@@ -238,6 +238,14 @@ export class CreateSellDto {
     description: 'Customer name',
     example: 'John Doe'
   })
+    @Transform(({ value }) => {
+    // If value is a string, trim it. If it becomes empty, return null.
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    }
+    return value;
+  })
   @IsOptional()
   @IsString()
   customerName?: string;
@@ -246,9 +254,15 @@ export class CreateSellDto {
     description: 'Customer phone number',
     example: '+8801712345678'
   })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    }
+    return value;
+  })
   @IsOptional()
   @IsString()
-  @IsMobilePhone('bn-BD')
   customerPhone?: string;
 
   @ApiPropertyOptional({ 

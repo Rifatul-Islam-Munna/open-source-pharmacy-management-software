@@ -126,7 +126,7 @@ export enum DosageType {
 
 
 export class Medicine {
- @Prop({required:true,text:true})
+ @Prop({required:true})
  name:string;
  
  @Prop({type: String, enum: DosageType})

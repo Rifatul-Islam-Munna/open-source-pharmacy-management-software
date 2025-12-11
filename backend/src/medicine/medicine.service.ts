@@ -5,7 +5,7 @@ import { TenantConnectionService } from 'src/tenant-connection/tenant-connection
 import { InjectModel } from '@nestjs/mongoose';
 import { Medicine, MedicineDocument, MedicineSchema } from './entities/medicine.schema';
 import { Model } from 'mongoose';
-import slugify from '@sindresorhus/slugify';
+import slugify from 'slugify';
 import pLimit from 'p-limit';
 
 @Injectable()

@@ -4,7 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { TenantConnectionService } from 'src/tenant-connection/tenant-connection.service';
-import slugify from '@sindresorhus/slugify';
+import slugify from 'slugify';
 import { GLOBALDATABSE } from 'lib/helper';
 import { User, UserDocument, UserSchema, UserType } from './entities/user.schema';
 import { PaginationDto } from 'lib/pagination.dto';

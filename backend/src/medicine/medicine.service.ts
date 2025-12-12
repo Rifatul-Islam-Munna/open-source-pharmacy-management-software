@@ -99,7 +99,11 @@ async uploadBulkFile(medicines: CreateMedicineDto[],useSlug:string) {
     const rawSlug = `${medicine.name}-${medicine.dosageType}-${medicine.generic}-${medicine.strength}-${medicine.manufacturer}`;
     return {
       ...medicine,
-      slug: slugify(rawSlug) // Add slug options as needed
+      slug: slugify(rawSlug,{
+      lower: true,
+        strict: true,     // strip special characters except replacement
+      trim: true 
+    }) // Add slug options as needed
     };
   });
 

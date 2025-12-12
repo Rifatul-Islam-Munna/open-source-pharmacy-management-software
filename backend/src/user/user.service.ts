@@ -17,7 +17,11 @@ export class UserService {
  async create(createUserDto: CreateUserDto) {
   const rawSlug = `${createUserDto.ownerName}-${createUserDto.shopName}-${createUserDto.location}`;
 
-  const slug = slugify(rawSlug)
+  const slug = slugify(rawSlug,{
+      lower: true,
+        strict: true,     // strip special characters except replacement
+      trim: true 
+    })
   const findUserModel = this.tenantConnectionService.getModel(GLOBALDATABSE,User.name,UserSchema)
 
   const findIsUserThere = await findUserModel.exists({$or:[{email:createUserDto.email},{slug:slug}]}).exec();

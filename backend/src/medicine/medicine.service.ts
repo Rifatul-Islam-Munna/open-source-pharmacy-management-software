@@ -18,7 +18,11 @@ export class MedicineService {
   async create(createMedicineDto: CreateMedicineDto,slugShop:string) {
     const rawSlug = `${createMedicineDto.name}-${createMedicineDto.dosageType}-${createMedicineDto.generic}-${createMedicineDto.strength}-${createMedicineDto.manufacturer}`;
 
-    const slug = slugify(rawSlug)
+    const slug = slugify(rawSlug,{
+      lower: true,
+        strict: true,     // strip special characters except replacement
+      trim: true 
+    })
     const random = Math.floor(Math.random() * 100);
 
     const finalData ={

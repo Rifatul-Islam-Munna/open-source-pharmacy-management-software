@@ -85,7 +85,7 @@ export class UserService {
 
        const findUserModel = this.tenantConnectionService.getModel<UserDocument>(GLOBALDATABSE,User.name,UserSchema)
         const user = await findUserModel.findOne({email:login.email}).lean();
-    if(!user){
+    if(!user || user.isDeleted){
       throw new HttpException('User not found', 400);
     }
     const isMatch = await bcrypt.compare(login.password,user.password);

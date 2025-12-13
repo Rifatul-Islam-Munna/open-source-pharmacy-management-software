@@ -44,6 +44,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { InputMask } from "@react-input/mask";
 import { QuickCalculator } from "@/components/custom/common/calculator";
+import { UnitPriceCalculator } from "@/components/custom/common/UnitPriceCalculator";
 // Sample medicine list for combobox
 const medicineOptions = [
   { value: "paracetamol-500", label: "Paracetamol 500mg" },
@@ -196,8 +197,10 @@ export default function AddMedicinePage() {
             Add medicine manually or detect from image
           </p>
         </div>
-
-        <QuickCalculator />
+        <div className=" flex justify-center items-center gap-2">
+          <UnitPriceCalculator />
+          <QuickCalculator />
+        </div>
       </div>
 
       <Tabs defaultValue="manual" className="px-4">

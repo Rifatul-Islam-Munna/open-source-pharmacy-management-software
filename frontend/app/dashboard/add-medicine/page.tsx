@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ViewTransition } from "react";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 import {
   BottleWine,
   CalendarIcon,
@@ -42,7 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-
+import { InputMask } from "@react-input/mask";
 // Sample medicine list for combobox
 const medicineOptions = [
   { value: "paracetamol-500", label: "Paracetamol 500mg" },
@@ -66,6 +66,8 @@ export default function AddMedicinePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [seach, setSeach] = useState("");
   const [debouncedSearch] = useDebounce(seach, 1000);
+  const [dateInput, setDateInput] = useState("");
+
   const query = new URLSearchParams();
   if (debouncedSearch?.length > 3) query.append("name", debouncedSearch);
 
@@ -82,6 +84,37 @@ export default function AddMedicinePage() {
     };
     reader.readAsDataURL(file);
   };
+  const [day, setDay] = useState("");
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState("");
+  useEffect(() => {
+    // Auto-pad day and month with leading zeros
+    const paddedDay = day.length === 1 ? `0${day}` : day;
+    const paddedMonth = month.length === 1 ? `0${month}` : month;
+
+    // Validate: day can be 1-2 digits, month can be 1-2 digits, year must be 4
+    if (day && month && year.length === 4) {
+      const d = parseInt(paddedDay);
+      const m = parseInt(paddedMonth);
+      const y = parseInt(year);
+
+      // Check ranges
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
+        const date = new Date(y, m - 1, d);
+
+        // Validate it's a real date (handles Feb 30, etc.)
+        if (date.getDate() === d && date.getMonth() === m - 1) {
+          updateCurrentMedicine({ expiryDate: date });
+        } else {
+          updateCurrentMedicine({ expiryDate: undefined });
+        }
+      } else {
+        updateCurrentMedicine({ expiryDate: undefined });
+      }
+    } else {
+      updateCurrentMedicine({ expiryDate: undefined });
+    }
+  }, [day, month, updateCurrentMedicine, year]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -276,35 +309,84 @@ export default function AddMedicinePage() {
                   >
                     Expiry Date
                   </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1.5 h-9 border-border-gray hover:border-primary-blue shadow-none text-sm",
-                          !currentMedicine?.expiryDate &&
-                            "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {currentMedicine?.expiryDate ? (
-                          format(currentMedicine.expiryDate, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 shadow-none border-border-gray">
-                      <Calendar
-                        mode="single"
-                        selected={currentMedicine?.expiryDate}
-                        onSelect={(date) =>
-                          updateCurrentMedicine({ expiryDate: date })
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <Input
+                      id="expiry-day"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="DD"
+                      maxLength={2}
+                      value={day}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d]/g, "");
+                        if (
+                          val === "" ||
+                          (parseInt(val) >= 0 && parseInt(val) <= 31)
+                        ) {
+                          setDay(val);
+                          // Auto-jump to month when 2 digits entered
+                          if (val.length === 2) {
+                            document.getElementById("expiry-month")?.focus();
+                          }
                         }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                      }}
+                      className="h-9 w-14 text-center border-border-gray focus:border-primary-blue shadow-none text-sm"
+                    />
+                    <span className="text-dark-text">/</span>
+                    <Input
+                      id="expiry-month"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="MM"
+                      maxLength={2}
+                      value={month}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d]/g, "");
+                        if (
+                          val === "" ||
+                          (parseInt(val) >= 0 && parseInt(val) <= 12)
+                        ) {
+                          setMonth(val);
+                          // Auto-jump to year when 2 digits entered
+                          if (val.length === 2) {
+                            document.getElementById("expiry-year")?.focus();
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Backspace on empty goes to previous field
+                        if (e.key === "Backspace" && month === "") {
+                          document.getElementById("expiry-day")?.focus();
+                        }
+                      }}
+                      className="h-9 w-14 text-center border-border-gray focus:border-primary-blue shadow-none text-sm"
+                    />
+                    <span className="text-dark-text">/</span>
+                    <Input
+                      id="expiry-year"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="YYYY"
+                      maxLength={4}
+                      value={year}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d]/g, "");
+                        if (
+                          val === "" ||
+                          (parseInt(val) >= 0 && parseInt(val) <= 9999)
+                        ) {
+                          setYear(val);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Backspace on empty goes to previous field
+                        if (e.key === "Backspace" && year === "") {
+                          document.getElementById("expiry-month")?.focus();
+                        }
+                      }}
+                      className="h-9 w-20 text-center border-border-gray focus:border-primary-blue shadow-none text-sm"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

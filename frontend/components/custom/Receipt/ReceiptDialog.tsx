@@ -289,7 +289,7 @@ export default function ReceiptDialog({
             {/* Footer */}
             <div className="border-t border-black pt-0.5 mt-1">
               <div className="flex justify-between items-center mb-0.5 text-[8pt]">
-                <span className="font-bold">{receivedBy}</span>
+                <span className="font-bold"></span>
                 <span className="text-[7pt]">────────────</span>
                 <span className="font-bold">{paymentMethod}</span>
               </div>
@@ -299,20 +299,17 @@ export default function ReceiptDialog({
             {/* Bengali Text */}
             <div className="text-[7pt] leading-tight border-t border-b border-dashed border-black py-0.5 my-0.5">
               <p className="m-0">
-                **সালের শেষের ছাড় উত্তর বেরাবর গোনার হর না।*
+                পাতা কাটা এবং মেয়াদ উত্তীর্ণ ওষুধ ফেরত যোগ্য নয় ।
               </p>
+              <p className="m-0">১৫ দিন পর ঔষধ ফেরত নেওয়া হয় না।</p>
               <p className="m-0">
-                **ফলে আপাচন রহ্মতা ঔষ্চর জন্য সম্পূর্ণ মাদকে।
+                ওষুধ ফেরত দেয়ার সময় অবশ্যই রশিদ সাথে আনবেন।
               </p>
-              <p className="m-0">
-                **পরীক্ষের পূর্বে, ক্যাপসিউল, ভিটামিন, শুধু এবং দ্রব্য আউট্রা
-              </p>
-              <p className="m-0">পরীক্ষের পরে পরিবর্তনযোগ্য নয়।</p>
             </div>
 
             {/* Developer Info */}
             <div className="text-center text-[7pt] mt-0.5 mb-1">
-              Software Developed by RIfat, Mob: 01907565617
+              Software Developed at BitaraDigital by Rifat
             </div>
           </div>
         </div>

@@ -64,9 +64,9 @@ export default function SellMedicinePage() {
   const [open, setOpen] = useState(false);
   const [sales, SetSales] = useState<Sale | null>(null);
 
-  const [debouncedSearch] = useDebounce(searchQuery, 1000);
+  const [debouncedSearch] = useDebounce(searchQuery, 500);
   const query = new URLSearchParams();
-  if (debouncedSearch?.length > 3) query.append("searchQuery", debouncedSearch);
+  if (debouncedSearch?.length > 2) query.append("searchQuery", debouncedSearch);
 
   const { data, isPending } = useQueryWrapper<MedicineResponse>(
     ["sells-medicines", debouncedSearch],
@@ -138,6 +138,8 @@ export default function SellMedicinePage() {
     console.log("Saving sale:", generateInvoice());
   };
 
+  console.log("data-of-data", data);
+
   return (
     <div className="space-y-3">
       <ReceiptDialog open={open} onOpenChange={setOpen} sale={sales} />
@@ -172,55 +174,70 @@ export default function SellMedicinePage() {
                     </span>
                   </Button>
                 </PopoverTrigger>
+
                 <PopoverContent
                   className="w-full p-0 shadow-none border-border-gray"
                   align="start"
                 >
-                  <Command>
-                    <CommandInput
+                  <div className="p-2">
+                    <Input
                       placeholder="Type medicine name..."
                       value={searchQuery}
-                      onValueChange={setSearchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="mb-2"
                     />
-                    <CommandList>
-                      <CommandEmpty>No medicine found.</CommandEmpty>
-                      <CommandGroup>
-                        {data?.data?.map((medicine) => (
-                          <CommandItem
+
+                    {isPending && (
+                      <div className="p-2 text-xs text-muted-foreground">
+                        Searching...
+                      </div>
+                    )}
+
+                    {!isPending && data && data.data.length === 0 && (
+                      <div className="p-2 text-xs text-muted-foreground">
+                        No medicine found.
+                      </div>
+                    )}
+
+                    {!isPending && data && data.data.length > 0 && (
+                      <div className="max-h-64 overflow-y-auto">
+                        {data.data.map((medicine) => (
+                          <button
                             key={medicine._id}
-                            onSelect={() => handleAddMedicine(medicine)}
-                            className="cursor-pointer hover:bg-light-gray   min-w-xs"
+                            type="button"
+                            onClick={() => handleAddMedicine(medicine)}
+                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-light-gray flex items-center i justify-start gap-3"
                           >
-                            <div className="flex items-center justify-between w-full">
-                              <div>
-                                <p className="text-sm font-medium text-dark-blue">
-                                  {medicine?.name}
-                                </p>
-                                <p className="text-xs text-dark-text/60">
-                                  Stock: {medicine?.totalUnits}
-                                </p>
-                                <p className="text-xs text-dark-text/60">
-                                  Batch:{" "}
-                                  <span className=" text-green-700 font-bold text-xs">
-                                    {medicine?.batchNumber}
-                                  </span>
-                                </p>
-                                <p className="text-xs text-dark-text/60">
-                                  Does Type:{" "}
-                                  <span className=" text-green-700 font-bold text-sm">
-                                    {medicine?.shopMedicineId?.dosageType}
-                                  </span>
-                                </p>
-                              </div>
-                              <Badge className="bg-primary-blue/10 text-primary-blue border-primary-blue/20">
-                                ৳{medicine?.sellingPrice?.toFixed(2)}
-                              </Badge>
+                            <div>
+                              <p className="font-medium text-dark-blue">
+                                {medicine.name}
+                              </p>
+                              <p className="text-xs text-dark-text/60">
+                                Stock: {medicine.totalUnits}
+                              </p>
                             </div>
-                          </CommandItem>
+                            <div className=" flex flex-col mx-2">
+                              <p className="text-xs text-dark-text/60">
+                                Batch:{" "}
+                                <span className=" text-green-700 font-bold text-xs">
+                                  {medicine?.batchNumber}
+                                </span>
+                              </p>
+                              <p className="text-xs text-dark-text/60">
+                                Does Type:{" "}
+                                <span className=" text-green-700 font-bold text-sm">
+                                  {medicine?.shopMedicineId?.dosageType}
+                                </span>
+                              </p>
+                            </div>
+                            <Badge className="bg-primary-blue/10 text-primary-blue border-primary-blue/20">
+                              ৳{medicine.sellingPrice.toFixed(2)}
+                            </Badge>
+                          </button>
                         ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
+                      </div>
+                    )}
+                  </div>
                 </PopoverContent>
               </Popover>
             </CardContent>

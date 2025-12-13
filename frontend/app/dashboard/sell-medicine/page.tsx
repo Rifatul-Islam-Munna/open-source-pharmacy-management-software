@@ -218,6 +218,12 @@ export default function SellMedicinePage() {
                             </div>
                             <div className=" flex flex-col mx-2">
                               <p className="text-xs text-dark-text/60">
+                                strength:{" "}
+                                <span className=" text-green-700 font-bold text-xs">
+                                  {medicine?.shopMedicineId?.strength}
+                                </span>
+                              </p>
+                              <p className="text-xs text-dark-text/60">
                                 Batch:{" "}
                                 <span className=" text-green-700 font-bold text-xs">
                                   {medicine?.batchNumber}

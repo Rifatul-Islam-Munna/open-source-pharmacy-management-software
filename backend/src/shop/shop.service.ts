@@ -60,10 +60,16 @@ export class ShopService {
   const filter: any = {};
 
   // Name and SKU search (assuming name is on batch for search)
-  if (searchQuery) {
+  /* if (searchQuery) {
     filter.$text = { $search: query.searchQuery };
     // If searching in joined medicine name, do via $lookup or aggregation (see note below)
-  }
+  } */
+ if (searchQuery) {
+  filter.name = {
+    $regex: searchQuery,
+    $options: 'i', // case-insensitive
+  };
+}
   // Stock status (if a field exists on your data—adjust as needed)
  if (Array.isArray(stockStatus) && stockStatus.length > 0) {
   if (stockStatus.includes(StockStatus.IN_STOCK)) {

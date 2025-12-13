@@ -43,6 +43,7 @@ import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { InputMask } from "@react-input/mask";
+import { QuickCalculator } from "@/components/custom/common/calculator";
 // Sample medicine list for combobox
 const medicineOptions = [
   { value: "paracetamol-500", label: "Paracetamol 500mg" },
@@ -186,11 +187,17 @@ export default function AddMedicinePage() {
 
   return (
     <div className="space-y-3">
-      <div className="px-4 py-3 border-b border-border-gray bg-white">
-        <h1 className="text-2xl font-bold text-dark-blue">Add New Medicine</h1>
-        <p className="text-sm text-dark-text mt-0.5">
-          Add medicine manually or detect from image
-        </p>
+      <div className="px-4 flex justify-between items-center py-3 border-b border-border-gray bg-white">
+        <div>
+          <h1 className="text-2xl font-bold text-dark-blue">
+            Add New Medicine
+          </h1>
+          <p className="text-sm text-dark-text mt-0.5">
+            Add medicine manually or detect from image
+          </p>
+        </div>
+
+        <QuickCalculator />
       </div>
 
       <Tabs defaultValue="manual" className="px-4">

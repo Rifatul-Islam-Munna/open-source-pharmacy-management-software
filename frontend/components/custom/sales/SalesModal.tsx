@@ -165,7 +165,8 @@ export function SalesModal({ sale, open, onClose }: SalesModalProps) {
                           >
                             <td className="px-4 py-3">
                               <p className="font-medium text-dark-blue truncate max-w-[200px]">
-                                {item.medicineName}
+                                {item.medicineName}-{item?.doesType}-
+                                {item?.strength}
                               </p>
                             </td>
                             <td className="px-4 py-3 text-right text-dark-text">

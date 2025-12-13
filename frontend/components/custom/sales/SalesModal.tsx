@@ -164,7 +164,7 @@ export function SalesModal({ sale, open, onClose }: SalesModalProps) {
                             className="border-t border-border-gray/60 hover:bg-light-gray/60"
                           >
                             <td className="px-4 py-3">
-                              <p className="font-medium text-dark-blue truncate max-w-[200px]">
+                              <p className="font-medium text-xs text-dark-blue  max-w-[200px]">
                                 {item.medicineName}-{item?.doesType}-
                                 {item?.strength}
                               </p>

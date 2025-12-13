@@ -64,11 +64,21 @@ export class ShopService {
     filter.$text = { $search: query.searchQuery };
     // If searching in joined medicine name, do via $lookup or aggregation (see note below)
   } */
- if (searchQuery) {
-  filter.name = {
-    $regex: searchQuery,
-    $options: 'i', // case-insensitive
-  };
+if (searchQuery) {
+  filter.$or = [
+    {
+      name: {
+        $regex: `^${searchQuery}`,
+        $options: 'i',
+      },
+    },
+    {
+      batchNumber: {
+        $regex: `^${searchQuery}`,
+        $options: 'i',
+      },
+    },
+  ];
 }
   // Stock status (if a field exists on your data—adjust as needed)
  if (Array.isArray(stockStatus) && stockStatus.length > 0) {

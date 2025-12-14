@@ -530,7 +530,7 @@ export default function InventoryPage() {
                     <TableCell className="align-top ">
                       <div className="flex flex-wrap flex-col max-w-[290px] overflow-x-auto">
                         <span className="font-medium text-dark-blue mr-1">
-                          {medicine?.name}-
+                          {medicine?.name}
                         </span>
                         <span className="text-xs   text-muted-foreground flex flex-col">
                           <span className="truncate wrap-break-word  overflow-x-hidden">

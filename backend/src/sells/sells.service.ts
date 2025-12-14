@@ -345,23 +345,35 @@ async getDashboardData(filter: DashboardDateRangeDto,userSlug:string,userId:stri
   // Main aggregation pipeline with proper typing
   const mainPipeline: PipelineStage[] = [
     matchStage,
-    { $unwind: '$items' },
+    {
+      $addFields: {
+        totalCost: {
+          $sum: {
+            $map: {
+              input: '$items',
+              as: 'item',
+              in: { $multiply: ['$$item.originalPrice', '$$item.quantity'] }
+            }
+          }
+        }
+      }
+    },
     {
       $group: {
         _id: timeGroupId,
         revenue: { $sum: '$total' },
-        cost: { $sum: { $multiply: ['$items.originalPrice', '$items.quantity'] } },
+        cost: { $sum: '$totalCost' },
         salesCount: { $sum: 1 },
         customers: { $addToSet: '$customerName' },
       },
     },
     {
       $addFields: {
-        profit: { $round:[{ $subtract: ['$revenue', '$cost']},2] },
+        profit: { $round: [{ $subtract: ['$revenue', '$cost'] }, 2] },
         customerCount: { $size: '$customers' },
       },
     },
-    { $sort: { _id: 1 as 1 } }, // Explicitly cast to literal type 1
+    { $sort: { _id: 1 as 1 } },
   ];
 
   // Top products aggregation with proper typing
@@ -380,14 +392,26 @@ async getDashboardData(filter: DashboardDateRangeDto,userSlug:string,userId:stri
   ];
 
   // Overall summary (totals across entire range)
-  const summaryPipeline: PipelineStage[] = [
+   const summaryPipeline: PipelineStage[] = [
     matchStage,
-    { $unwind: '$items' },
+    {
+      $addFields: {
+        saleCost: {
+          $sum: {
+            $map: {
+              input: '$items',
+              as: 'item',
+              in: { $multiply: ['$$item.originalPrice', '$$item.quantity'] }
+            }
+          }
+        }
+      }
+    },
     {
       $group: {
         _id: null,
         totalRevenue: { $sum: '$total' },
-        totalCost: { $sum: { $multiply: ['$items.originalPrice', '$items.quantity'] } },
+        totalCost: { $sum: '$saleCost' },
         totalSales: { $sum: 1 },
         uniqueCustomers: { $addToSet: '$customerName' },
         totalPaidAmount: { $sum: '$paidAmount' },
@@ -395,17 +419,18 @@ async getDashboardData(filter: DashboardDateRangeDto,userSlug:string,userId:stri
     },
     {
       $addFields: {
-        totalProfit: {$round:[ {$subtract: ['$totalRevenue', '$totalCost']} ,2]},
+        totalProfit: { $round: [{ $subtract: ['$totalRevenue', '$totalCost'] }, 2] },
         customerCount: { $size: '$uniqueCustomers' },
         profitMargin: {
           $round: [
-            
-         
-          {$multiply: [
-            { $divide: [{ $subtract: ['$totalRevenue', '$totalCost'] }, '$totalRevenue'] },
-            100,
-          ],}
-           ]
+            {
+              $multiply: [
+                { $divide: [{ $subtract: ['$totalRevenue', '$totalCost'] }, '$totalRevenue'] },
+                100,
+              ]
+            },
+            1
+          ]
         },
       },
     },

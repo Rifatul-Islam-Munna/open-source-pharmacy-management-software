@@ -197,6 +197,15 @@ export class SearchShopProductDto {
   @IsOptional()
   @IsEnum(SortBy)
   sortBy?: SortBy = SortBy.NAME_ASC;
+
+    @ApiProperty({
+    description: 'Search query for product name or SKU',
+    required: false,
+    example: 'Paracetamol',
+  })
+  @IsOptional()
+  @IsString()
+  createdDate?: string;
 }
 
 

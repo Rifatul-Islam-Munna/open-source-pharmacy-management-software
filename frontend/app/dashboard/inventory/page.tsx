@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreHorizontal,
@@ -64,6 +64,8 @@ import { format, isValid, parseISO } from "date-fns";
 import { MedicineDetailsModal } from "@/components/custom/inventory/medicine-details-modal";
 import { EditMedicineModal } from "@/components/custom/inventory/edit-medicine-modal";
 import { useCommonMutationApi } from "@/api-hooks/mutation-common";
+import { useUser } from "@/hooks/useUser";
+import { DatePicker } from "./DatePicker";
 
 // Demo data with proper date format
 const demoMedicines = [
@@ -134,7 +136,9 @@ export default function InventoryPage() {
   const [selectedMedicine, setSelectedMedicine] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-
+  const [date, setDate] = useState<undefined | Date>(undefined);
+  const { user } = useUser();
+  console.log("new Date", date?.toLocaleDateString());
   // Filter states
   const [selectedStockStatus, setSelectedStockStatus] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("name-asc");
@@ -143,11 +147,17 @@ export default function InventoryPage() {
   if (text.length > 3) query.append("searchQuery", text);
   query.append("page", currentPage.toString());
   query.append("limit", itemsPerPage.toString());
+  if (date) query.append("createdDate", date.toLocaleDateString());
   if (selectedStockStatus?.length > 0)
     selectedStockStatus?.forEach((item) => query.append("stockStatus", item));
   query.append("sortBy", sortBy);
   console.log("urls", `/shop?${query.toString()}`);
-
+  useEffect(() => {
+    const getCall = () => {
+      setCurrentPage(1);
+    };
+    getCall();
+  }, [text, selectedStockStatus, sortBy, date]);
   const { data, isPending, refetch } = useQueryWrapper<MedicineResponse>(
     [
       "get-my-inventory",
@@ -156,6 +166,7 @@ export default function InventoryPage() {
       itemsPerPage,
       selectedStockStatus,
       sortBy,
+      date?.toLocaleDateString(),
     ],
     `/shop?${query.toString()}`
   );
@@ -313,8 +324,8 @@ export default function InventoryPage() {
 
       {/* Search and Actions */}
       <div className="px-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex items-center gap-3 justify-center flex-col md:flex-row flex-wrap md:justify-between">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dark-text/50" />
             <Input
               placeholder="Search by product name or SKU..."
@@ -468,9 +479,11 @@ export default function InventoryPage() {
             </PopoverContent>
           </Popover>
 
+          <DatePicker date={date} setDate={setDate} />
+
           <Button
-            onClick={() => router.push("/add-medicine")}
-            className="h-10 bg-primary-blue hover:bg-dark-blue text-white shadow-none ml-auto"
+            onClick={() => router.push("/dashboard/add-medicine")}
+            className="h-10 bg-primary-blue hover:bg-dark-blue text-white shadow-none md:ml-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add New Product
@@ -514,9 +527,20 @@ export default function InventoryPage() {
                     key={medicine?._id}
                     className="hover:bg-light-gray transition-colors"
                   >
-                    <TableCell className="font-medium text-dark-blue">
-                      {medicine?.name}
+                    <TableCell className="align-top ">
+                      <div className="flex flex-wrap flex-col max-w-[290px] overflow-x-auto">
+                        <span className="font-medium text-dark-blue mr-1">
+                          {medicine?.name}-
+                        </span>
+                        <span className="text-xs   text-muted-foreground flex flex-col">
+                          <span className="truncate wrap-break-word  overflow-x-hidden">
+                            {medicine?.shopMedicineId?.generic}
+                          </span>
+                          <span> {medicine?.shopMedicineId?.strength}</span>
+                        </span>
+                      </div>
                     </TableCell>
+
                     <TableCell className="text-dark-text">
                       {formatDate(medicine?.expiryDate)}
                     </TableCell>
@@ -566,6 +590,7 @@ export default function InventoryPage() {
                               e.preventDefault(); // Prevent dropdown from closing
                             }}
                             className="cursor-pointer hover:bg-light-gray"
+                            disabled={user?.role !== "admin"}
                           >
                             <MedicineDetailsModal
                               trigger={

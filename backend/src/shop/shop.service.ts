@@ -7,7 +7,7 @@ import { Medicine, MedicineSchema } from 'src/medicine/entities/medicine.schema'
 import { Model, Types } from 'mongoose';
 import { AlertType, GetAlertsQueryDto, SortBy } from './dto/get-alerts-query.dto';
 import { AlertItemDto, GetAlertsResponseDto } from './dto/alert-response.dto';
-
+import { startOfDay, endOfDay, parse,isValid  } from 'date-fns';
 
 @Injectable()
 export class ShopService {
@@ -46,7 +46,8 @@ export class ShopService {
     page = 1,
     limit = 10,
     stockStatus = [],
-    sortBy = 'name-asc'
+    sortBy = 'name-asc',
+    createdDate
   } = query;
 
   this.logger.debug("query",query,"page",page,"limit",limit,"stockStatus",stockStatus,"sortBy",sortBy)
@@ -58,12 +59,30 @@ export class ShopService {
 
   // Build base filters for batches
   const filter: any = {};
+ 
+if (createdDate) {
+  // Treat input as LOCAL date
+  const localDate = new Date(createdDate);
 
-  // Name and SKU search (assuming name is on batch for search)
-  /* if (searchQuery) {
-    filter.$text = { $search: query.searchQuery };
-    // If searching in joined medicine name, do via $lookup or aggregation (see note below)
-  } */
+  if (!isValid(localDate)) {
+    this.logger.warn(`Invalid date format received: ${createdDate}`);
+    return;
+  }
+
+  // Create LOCAL day range
+  const localStart = startOfDay(localDate);
+  const localEnd = endOfDay(localDate);
+
+  // Mongo stores UTC, but Date object auto converts correctly
+  filter.createdAt = {
+    $gte: localStart,
+    $lte: localEnd,
+  };
+
+  this.logger.debug('Local start:', localStart);
+  this.logger.debug('Local end:', localEnd);
+}
+ 
 if (searchQuery) {
   filter.$or = [
     {

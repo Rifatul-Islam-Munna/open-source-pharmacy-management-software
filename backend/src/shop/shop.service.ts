@@ -351,4 +351,33 @@ async getAlert(query:GetAlertsQueryDto,userSlug:string): Promise<GetAlertsRespon
     }
     return data
   }
+
+
+ async getMyShopTotal(userSlug: string) {
+  const shopStockBatchModel = this.getShopStockBatchModel(userSlug);
+  
+  const result = await shopStockBatchModel.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalUnits: { $sum: "$totalUnits" },
+        totalSellingValue: {
+          $sum: { $multiply: ["$sellingPrice", "$totalUnits"] }
+        },
+        totalPurchaseValue: {
+          $sum: { $multiply: ["$purchasePrice", "$totalUnits"] }
+        },
+        totalBatches: { $sum: 1 }  // Optional: count of batches
+      }
+    }
+  ]);
+
+  return result[0] ?? {
+    totalUnits: 0,
+    totalSellingValue: 0,
+    totalPurchaseValue: 0,
+    totalBatches: 0
+  };
+}
+
 }

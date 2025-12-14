@@ -26,6 +26,7 @@ import {
   Trash2,
   Edit,
   MoreVertical,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useQueryWrapper } from "@/api-hooks/react-query-wrapper";
 import { AddEmployeeDialog } from "@/components/custom/admin/AddEmployeeDialog";
+import { useCommonMutationApi } from "@/api-hooks/mutation-common";
 
 interface User {
   _id: string;
@@ -70,25 +72,27 @@ export default function UserManagementPage() {
     searchQuery ? `&search=${searchQuery}` : ""
   }`;
 
-  const { data, isLoading, error } = useQueryWrapper<PaginationResponse>(
-    ["users", page, limit, sortOrder, searchQuery],
-    apiUrl
-  );
+  const { data, isLoading, error, refetch } =
+    useQueryWrapper<PaginationResponse>(
+      ["users", page, limit, sortOrder, searchQuery],
+      apiUrl
+    );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1); // Reset to first page on search
   };
+  const { mutate, isPending } = useCommonMutationApi({
+    method: "DELETE",
+    url: "/user/delete-user",
+    successMessage: "User deleted successfully",
+    onSuccess: () => {
+      refetch();
+    },
+  });
 
   const handleDelete = async (userId: string) => {
-    /*   if (!confirm("Are you sure you want to delete this user?")) return;
-
-    try {
-      await fetch(`/api/users/${userId}`, { method: "DELETE" });
-      // Refetch or invalidate query
-    } catch (error) {
-      console.error("Delete failed:", error);
-    } */
+    mutate(userId);
   };
 
   if (isLoading) {
@@ -229,26 +233,31 @@ export default function UserManagementPage() {
                   {new Date(user.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  {/*   <DropdownMenu>
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      {/*  <DropdownMenuItem>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                       <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => handleDelete(user._id)}
+                        disabled={isPending}
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
+                        {isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
-                  </DropdownMenu> */}
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}

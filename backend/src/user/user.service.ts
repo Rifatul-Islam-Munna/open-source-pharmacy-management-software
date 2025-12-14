@@ -181,7 +181,19 @@ export class UserService {
     return `This action updates a #${id} user`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(id: string) {
+     const model = this.tenantConnectionService.getModel<UserDocument>(
+    GLOBALDATABSE,
+    User.name,
+    UserSchema,
+  );
+
+
+
+  const fineOneAndDelete = await model.findOneAndDelete({ _id: id,type:UserType.WORKER });
+  if(!fineOneAndDelete){
+    throw new HttpException('User not deleted', 400);
+  }
+  return fineOneAndDelete
   }
 }

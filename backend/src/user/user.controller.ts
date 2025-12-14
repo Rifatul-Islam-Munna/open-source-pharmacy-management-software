@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Req, UseGuard
 import { UserService } from './user.service';
 import { CreateUserDto, LoginUserDto, ResetPassword } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from 'lib/pagination.dto';
+import { DeleteDto, PaginationDto } from 'lib/pagination.dto';
 import { AuthGuard, type  ExpressRequest } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { UserType } from './entities/user.schema';
@@ -44,8 +44,8 @@ export class UserController {
     return this.userService.resetPassword( updateUserDto,req.user);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @Delete('delete-user')
+  remove(@Query() query: DeleteDto) {
+    return this.userService.remove(query.id!);
   }
 }

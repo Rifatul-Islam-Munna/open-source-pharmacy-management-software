@@ -23,6 +23,10 @@ export class ShopController {
   getAllMyAlerts(@Query() query:GetAlertsQueryDto,@Req() req:ExpressRequest) {
     return this.shopService.getAlert(query,req.user.slug);
   }
+  @Get('get-my-shopDetails')
+  getMyShopDetails(@Req() req:ExpressRequest) {
+    return this.shopService.getMyShopTotal(req.user.slug);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

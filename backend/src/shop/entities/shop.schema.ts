@@ -55,5 +55,5 @@ export const ShopStockBatchSchema =
   SchemaFactory.createForClass(ShopStockBatch);
 
 
-ShopStockBatchSchema.index({ totalUnits:1,sellingPrice:1})
+ShopStockBatchSchema.index({ totalUnits:1,sellingPrice:1,purchasePrice:1})
 ShopStockBatchSchema.index({name:"text",batchNumber:"text"})

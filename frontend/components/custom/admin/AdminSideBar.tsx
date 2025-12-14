@@ -39,9 +39,14 @@ const items = [
     icon: LayoutDashboard,
   },
   {
-    title: "user",
-    url: "/admin/user",
+    title: "My Store",
+    url: "/admin/my-store",
     icon: ShoppingCart,
+  },
+  {
+    title: "Employees",
+    url: "/admin/user",
+    icon: Users,
   },
 
   /* {

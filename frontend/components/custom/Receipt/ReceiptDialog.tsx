@@ -112,17 +112,22 @@ export default function ReceiptDialog({
     contentRef: receiptRef,
     pageStyle: `
       @page { 
-        size: 85mm ${heightInMM}mm; 
+        size: 80mm ${heightInMM}mm; 
         margin: 0; 
       }
       body { 
+         margin: 0mm !important; 
+        padding: 0mm !important;
         margin: 0; 
         padding: 0; 
+           -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
       #receipt { 
         padding: 5px; 
         margin: 0;
-        width: 85mm;
+        width: 80mm;
+        box-sizing: border-box;
       }
       #receipt * {
         page-break-inside: avoid;
@@ -142,7 +147,8 @@ export default function ReceiptDialog({
           <div
             ref={receiptRef}
             id="receipt"
-            className="w-full font-mono text-[8pt]"
+            className="w-[80mm] max-w-[80mm] font-mono text-[8pt] mx-auto"
+            style={{ width: "80mm", maxWidth: "80mm" }}
           >
             {/* Header - Font A (12pt) */}
             <div className="text-center border-b border-black pb-1 mb-1">

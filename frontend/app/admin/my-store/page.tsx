@@ -47,7 +47,6 @@ const MyStore = () => {
         <StatsCard
           title="Purchase Value"
           value={`৳${data?.totalPurchaseValue.toLocaleString()}`}
-          subtitle={`Cost: ৳${data?.totalPurchaseValue.toLocaleString()}`}
           loading={isPending}
           icon="💰"
           bgColor="bg-orange-50"
@@ -58,7 +57,6 @@ const MyStore = () => {
         <StatsCard
           title="Inventory Value"
           value={`৳${data?.totalSellingValue.toLocaleString()}`}
-          subtitle={`Cost: ৳${data?.totalPurchaseValue.toLocaleString()}`}
           loading={isPending}
           icon="💰"
           bgColor="bg-green-50"

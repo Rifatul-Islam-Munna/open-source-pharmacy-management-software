@@ -12,20 +12,20 @@ export class SellsController {
 
   @Post('create-new-sales')
   create(@Body() createSellDto: CreateSellDto,@Req() req:ExpressRequest) {
-    return this.sellsService.create(createSellDto,req.user.slug);
+    return this.sellsService.create(createSellDto,req.user.slug,req.user.id);
   }
 
   @Get('get-my-sales')
   findAll(@Query() query:SalesQueryDto,@Req() req:ExpressRequest) {
-    return this.sellsService.findAll(query,req.user.slug);
+    return this.sellsService.findAll(query,req.user.slug,req.user.id,req.user.role);
   }
   @Get('get-all-customer')
   findALlCustomer(@Query() query:CustomerSalesQueryDto,@Req() req:ExpressRequest) {
-    return this.sellsService.findAllForCustomerSales(query,req.user.slug);
+    return this.sellsService.findAllForCustomerSales(query,req.user.slug,req.user.id,req.user.role);
   }
   @Get('get-all-dashboardData')
   getAllDashboardData(@Query() query:DashboardDateRangeDto,@Req() req:ExpressRequest) {
-    return this.sellsService.getDashboardData(query,req.user.slug);
+    return this.sellsService.getDashboardData(query,req.user.slug,req.user.id,req.user.role);
   }
 
   @Get(':id')

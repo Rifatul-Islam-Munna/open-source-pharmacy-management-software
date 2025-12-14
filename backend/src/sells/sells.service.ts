@@ -7,6 +7,7 @@ import { Sale, SaleDocument, SaleSchema } from './entities/sell.schema';
 import { Types } from 'mongoose';
 import { startOfToday, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear } from 'date-fns';
 import { PipelineStage } from 'mongoose';
+import { UserType } from 'src/user/entities/user.schema';
 @Injectable()
 export class SellsService {
   constructor(private tenantConnectionService:TenantConnectionService){}
@@ -16,7 +17,7 @@ export class SellsService {
   private getStoreModel(slug:string){
      return this.tenantConnectionService.getModel(slug,ShopStockBatch.name,ShopStockBatchSchema);
   }
- async create(createSellDto: CreateSellDto,userSlug:string) {
+ async create(createSellDto: CreateSellDto,userSlug:string,id:string) {
   
 
     const getSalesModel = this.getSalesModel(userSlug);
@@ -33,9 +34,12 @@ export class SellsService {
  if (result.matchedCount !== createSellDto.items.length) {
   throw new HttpException('Some stock batches had insufficient quantity',HttpStatus.BAD_REQUEST);
  }
+ const newPayload ={
+  ...createSellDto,
+  sellerId:id
+ }
 
-
-  const sale = await getSalesModel.create(createSellDto);
+  const sale = await getSalesModel.create(newPayload);
   if(!sale){
     throw new HttpException('Can not create try again',HttpStatus.BAD_REQUEST);
   }
@@ -47,7 +51,7 @@ export class SellsService {
     
   }
 
-async findAll(query: SalesQueryDto,userSlug:string) {
+async findAll(query: SalesQueryDto,userSlug:string,id:string,role:string) {
   const getSalesModel = this.getSalesModel(userSlug);
   
 
@@ -57,7 +61,9 @@ async findAll(query: SalesQueryDto,userSlug:string) {
   const skip = (page - 1) * limit;
 
   // Build filter object
-  const filter: any = {};
+  const filter: any = {
+    ...(role !== UserType.ADMIN && { sellerId: id }),
+  };
 
   // Search functionality (invoiceId, customerName, customerPhone)
 /*   if (query.searchQuery) {
@@ -155,10 +161,12 @@ async findAll(query: SalesQueryDto,userSlug:string) {
   };
 }
 
-async findAllForCustomerSales(query: CustomerSalesQueryDto,userSlug:string) {
+async findAllForCustomerSales(query: CustomerSalesQueryDto,userSlug:string,userId:string,role:string) {
   const SaleModel = this.getSalesModel(userSlug);
 
-  const match: any = {};
+  const match: any = {
+     ...(role !== UserType.ADMIN && { sellerId: userId }),
+  };
 
   // Search filter with regex on customerName, customerPhone, invoiceId
  /*  if (query.searchQuery) {
@@ -265,7 +273,7 @@ async markAsPaid(id: string,userSlug:string) {
 
 
 
-async getDashboardData(filter: DashboardDateRangeDto,userSlug:string) {
+async getDashboardData(filter: DashboardDateRangeDto,userSlug:string,userId:string,role:string) {
   const SaleModel = this.getSalesModel(userSlug);
 
   let startDate: Date;
@@ -307,6 +315,7 @@ async getDashboardData(filter: DashboardDateRangeDto,userSlug:string) {
   const matchStage: PipelineStage = {
     $match: {
       createdAt: { $gte: startDate, $lte: endDate },
+       ...(role !== UserType.ADMIN && { sellerId: userId })
     },
   };
 

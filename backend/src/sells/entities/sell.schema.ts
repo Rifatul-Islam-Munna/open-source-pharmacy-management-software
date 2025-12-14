@@ -91,6 +91,8 @@ export class Sale {
 
   @Prop({sparse: true})
   customerPhone?: string;
+  @Prop({index:true})
+  sellerId?: string;
 
   @Prop()
   issuedBy?: string;
@@ -103,6 +105,7 @@ export class Sale {
 
   @Prop()
   invoiceId?: string;
+ 
 }
 
 export const SaleSchema = SchemaFactory.createForClass(Sale);

@@ -14,6 +14,7 @@ import {
   SquareStar,
   Bolt,
   Wrench,
+  BadgeTurkishLira,
 } from "lucide-react";
 
 import {
@@ -47,6 +48,11 @@ const items = [
     title: "Employees",
     url: "/admin/user",
     icon: Users,
+  },
+  {
+    title: "Employees Sells",
+    url: "/admin/employees-sells",
+    icon: BadgeTurkishLira,
   },
 
   /* {

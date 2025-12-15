@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateSellDto, CustomerSalesQueryDto, DashboardDateRangeDto, SalesQueryDto } from './dto/create-sell.dto';
 import { UpdateSellDto } from './dto/update-sell.dto';
 import { TenantConnectionService } from 'src/tenant-connection/tenant-connection.service';
@@ -10,6 +10,7 @@ import { PipelineStage } from 'mongoose';
 import { UserType } from 'src/user/entities/user.schema';
 @Injectable()
 export class SellsService {
+  private logger = new Logger(SellsService.name)
   constructor(private tenantConnectionService:TenantConnectionService){}
   private getSalesModel(slug:string){
     return  this.tenantConnectionService.getModel<SaleDocument>(slug,Sale.name,SaleSchema)
@@ -477,6 +478,128 @@ async getDashboardData(filter: DashboardDateRangeDto,userSlug:string,userId:stri
       revenue: item.revenue,
     })),
   };
+}
+
+async sellerSells(userSlug: string) {
+ const SaleModel = this.getSalesModel(userSlug);
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    // Get all seller stats in one aggregation
+    const sellerStats = await SaleModel.aggregate([
+      {
+        $match: {
+          sellerId: { $exists: true, $ne: null },
+          createdAt: { $gte: yearStart },
+        },
+      },
+      {
+        $group: {
+          _id: '$sellerId',
+          sellerName: { $max: '$issuedBy' },
+          todaySales: {
+            $sum: { $cond: [{ $gte: ['$createdAt', todayStart] }, '$total', 0] },
+          },
+          todayCount: {
+            $sum: { $cond: [{ $gte: ['$createdAt', todayStart] }, 1, 0] },
+          },
+          weekSales: {
+            $sum: { $cond: [{ $gte: ['$createdAt', weekStart] }, '$total', 0] },
+          },
+          monthSales: {
+            $sum: { $cond: [{ $gte: ['$createdAt', monthStart] }, '$total', 0] },
+          },
+          yearSales: { $sum: '$total' },
+        },
+      },
+      {
+        $sort: { yearSales: -1 },
+      },
+    ]);
+
+    // Get monthly breakdown for line chart
+    const monthlyData = await SaleModel.aggregate([
+      {
+        $match: {
+          sellerId: { $exists: true, $ne: null },
+          createdAt: { $gte: yearStart },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: '$createdAt' },
+            sellerId: '$sellerId',
+          },
+          sellerName: { $first: '$issuedBy' },
+          totalSales: { $sum: '$total' },
+        },
+      },
+      {
+        $sort: { '_id.month': 1 },
+      },
+    ]);
+
+
+    // Format cards data
+    const cards= sellerStats.map((seller) => ({
+      sellerId: seller._id,
+      sellerName: seller.sellerName ||seller?.issuedBy || 'Unknown',
+      todaySales: Math.round(seller.todaySales * 100) / 100,
+      todayTransactions: seller.todayCount,
+      weekSales: Math.round(seller.weekSales * 100) / 100,
+      monthSales: Math.round(seller.monthSales * 100) / 100,
+      yearSales: Math.round(seller.yearSales * 100) / 100,
+    }));
+
+    // Format weekly chart (bar chart for each seller)
+    const weeklyChart = sellerStats.map((seller) => ({
+      sellerId: seller._id,
+      sellerName: seller.sellerName || 'Unknown',
+      data: [
+        { period: 'Week', amount: Math.round(seller.weekSales * 100) / 100 },
+        { period: 'Month', amount: Math.round(seller.monthSales * 100) / 100 },
+        { period: 'Year', amount: Math.round(seller.yearSales * 100) / 100 },
+      ],
+    }));
+
+    // Format monthly chart (line chart comparing sellers)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyChart: {[string:string]:string}[] = [];
+    
+    for (let month = 1; month <= 12; month++) {
+      const monthData = { month: monthNames[month - 1] };
+      
+      const sellersInMonth = monthlyData.filter((d) => d._id.month === month);
+      sellersInMonth.forEach((seller) => {
+        const sellerName = seller.sellerName || seller._id.sellerId;
+        monthData[sellerName] = Math.round(seller.totalSales * 100) / 100;
+      });
+      
+      monthlyChart.push(monthData);
+    }
+
+    // Format yearly chart (top sellers)
+    const yearlyChart = sellerStats.map((seller) => ({
+      sellerId: seller._id,
+      sellerName: seller.sellerName || 'Unknown',
+      totalSales: Math.round(seller.yearSales * 100) / 100,
+    }));
+        this.logger.debug("log-for-seller",sellerStats)
+
+    return {
+      cards,
+      weeklyChart,
+      monthlyChart,
+      yearlyChart,
+    };
+
 }
 
 

@@ -27,6 +27,10 @@ export class SellsController {
   getAllDashboardData(@Query() query:DashboardDateRangeDto,@Req() req:ExpressRequest) {
     return this.sellsService.getDashboardData(query,req.user.slug,req.user.id,req.user.role);
   }
+  @Get('get-all-seller-data')
+  getAllSellerData(@Req() req:ExpressRequest) {
+    return this.sellsService.sellerSells(req.user.slug);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

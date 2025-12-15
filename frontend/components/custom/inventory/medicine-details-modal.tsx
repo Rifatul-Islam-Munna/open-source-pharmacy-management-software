@@ -148,7 +148,6 @@ export function MedicineDetailsModal({
             <div className="grid grid-cols-1 @md:grid-cols-3 gap-4">
               <div className="bg-white border border-border-gray rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-success" />
                   <p className="text-sm text-dark-text">Purchase Price</p>
                 </div>
                 <p className="text-2xl font-bold text-dark-blue">
@@ -158,7 +157,6 @@ export function MedicineDetailsModal({
 
               <div className="bg-white border border-border-gray rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-primary-blue" />
                   <p className="text-sm text-dark-text">Selling Price</p>
                 </div>
                 <p className="text-2xl font-bold text-dark-blue">

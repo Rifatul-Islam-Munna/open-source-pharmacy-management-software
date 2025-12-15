@@ -427,7 +427,7 @@ export default function SalesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-dark-text font-semibold">
-                      ${sale.total.toFixed(2)}
+                      {sale.total.toFixed(2)} BDT
                     </TableCell>
                     <TableCell>{getStatusBadge(sale.paymentStatus)}</TableCell>
                     <TableCell className="text-dark-text text-sm">

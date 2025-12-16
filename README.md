@@ -143,7 +143,7 @@ Navigate to the backend folder and create a .env file:
 
 MONGODB_URL=mongodb://localhost:27017
 
-# Template for multitenant databases (optional based on architecture)
+# Template for multitenant databases
 
 MONGO_URI_TEMPLATE=mongodb://localhost:27017/{name}
 

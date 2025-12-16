@@ -1,0 +1,24 @@
+name: Sync to Public Repo
+
+on:
+  push:
+    branches:
+      - openSource
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Sync to public repo
+        uses: repo-sync/github-sync@v2
+        with:
+          source_repo: ${{ github.repository }}
+          source_branch: openSource
+          destination_branch: main
+          github_token: ${{ secrets.PAT_TOKEN }}
+        env:
+          DESTINATION_REPO: Rifatul-Islam-Munna/open-source-pharmacy-management-software

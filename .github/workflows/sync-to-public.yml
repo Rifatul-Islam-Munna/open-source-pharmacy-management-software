@@ -10,17 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout openSource branch
         uses: actions/checkout@v4
         with:
           ref: openSource
+          fetch-depth: 0
 
-      - name: Push to public repo
-        uses: cpina/github-action-push-to-another-repository@main
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push to public repository
         env:
-          API_TOKEN_GITHUB: ${{ secrets.PAT_TOKEN }}
-        with:
-          source-directory: "."
-          destination-github-username: "Rifatul-Islam-Munna"
-          destination-repository-name: "open-source-pharmacy-management-software"
-          target-branch: main
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          git remote add public https://x-access-token:${PAT_TOKEN}@github.com/Rifatul-Islam-Munna/open-source-pharmacy-management-software.git
+          git push public openSource:main --force

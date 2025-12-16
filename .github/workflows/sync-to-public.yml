@@ -6,19 +6,21 @@ on:
       - openSource
 
 jobs:
-  repo-sync:
+  sync:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
-      - name: Sync to public repo
-        uses: repo-sync/github-sync@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          source_repo: ${{ github.repository }}
-          source_branch: openSource
-          destination_branch: main
-          github_token: ${{ secrets.PAT_TOKEN }}
+          ref: openSource
+
+      - name: Push to public repo
+        uses: cpina/github-action-push-to-another-repository@main
         env:
-          DESTINATION_REPO: Rifatul-Islam-Munna/open-source-pharmacy-management-software
+          API_TOKEN_GITHUB: ${{ secrets.PAT_TOKEN }}
+        with:
+          source-directory: "."
+          destination-github-username: "Rifatul-Islam-Munna"
+          destination-repository-name: "open-source-pharmacy-management-software"
+          target-branch: main

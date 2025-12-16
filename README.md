@@ -108,7 +108,7 @@ The Paid version includes:
 ## 🛠️ Tech Stack
 
 - **Monorepo Tooling:** Turborepo / Nx (depending on your setup)
-- **Frontend:** Next.js 14+, React, Tailwind CSS, Shadcn/UI
+- **Frontend:** Next.js 16+, React, Tailwind CSS, Shadcn/UI
 - **Backend:** NestJS, TypeORM/Mongoose
 - **Database:** MongoDB
 - **Authentication:** JWT (Access & Refresh Tokens)

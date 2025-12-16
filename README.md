@@ -68,6 +68,11 @@ PharmaSaaS is designed to handle complex pharmacy operations with ease. From hig
       <br />
       <p align="center"><b> Stock Alerts </b></p>
     </td>
+  
+    
+  
+  </tr>
+  <tr>
     <td width="50%">
       <img src="./images/employe-sell.png" alt="Todo List" width="100%" />
       <br />
@@ -78,6 +83,8 @@ PharmaSaaS is designed to handle complex pharmacy operations with ease. From hig
       <br />
       <p align="center"><b>Shop Sell</b></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <img src="./images/add-medicin.png" alt="Todo List" width="100%" />
       <br />
@@ -114,33 +121,34 @@ This project is a Monorepo containing both the `backend` and `frontend`. Follow 
 
 ### 1. Prerequisites
 
-- Node.js (v18+)
+- Node.js (v20+)
 - MongoDB installed and running locally
 
 ### 2. Clone the Repository
 
-```bash
-git clone [https://github.com/yourusername/pharmasaas-repo.git](https://github.com/yourusername/pharmasaas-repo.git)
-cd pharmasaas-repo
 3. Install Dependencies
-Run this in the root directory to install dependencies for both frontend and backend.
+   Run this in the root directory to install dependencies for both frontend and backend.
 
 Bash
 
 npm install
+
 # or
-yarn install
-4. Environment Configuration
+
+yarn install 4. Environment Configuration
 You need to set up environment variables for both the Backend and the Frontend.
 
 Backend (/backend/.env)
 Navigate to the backend folder and create a .env file:
 
 MONGODB_URL=mongodb://localhost:27017
+
 # Template for multitenant databases (optional based on architecture)
+
 MONGO_URI_TEMPLATE=mongodb://localhost:27017/{name}
 
 # Security
+
 ACCESS_TOKEN="fafafafafafaf"
 REFRESH_TOKEN="fafafafafafaf"
 
@@ -150,15 +158,13 @@ BASE_URL=http://localhost:4000
 NEXT_PUBLIC_API_URL=http://localhost:4000
 
 5. Running the App
-You can run both apps simultaneously from the root if you have a monorepo script setup, or run them in separate terminals.
-cd backend
-npm run start:dev
+   You can run both apps simultaneously from the root if you have a monorepo script setup, or run them in separate terminals.
+   cd backend
+   npm run start:dev
 
 Terminal 2: Frontend
 cd frontend
 npm run dev
 Visit http://localhost:3000 to view the application.
 
-
 <p align="center"> Made with ❤️ by <a href="https://github.com/yourusername">Rifat</a> </p>
-```
